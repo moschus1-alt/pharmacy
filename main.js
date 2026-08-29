@@ -225,6 +225,12 @@ window.onload = () => {
         window.gameAudio.setPaused(false);
         gameOverSoundPlayed = false;
         game = new Game(canvas, selectedProfile);
+        if (new URLSearchParams(location.search).has('test')) {
+            game.cash = 30000000;
+            game.stageTarget = 1;
+            game.baseDamage = 250;
+            game.novaCooldown = 0;
+        }
         document.getElementById('start-screen').style.display = 'none';
         window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 시럽투척이 충전되면 Q로 사용하세요!`);
         requestAnimationFrame(gameLoop);
