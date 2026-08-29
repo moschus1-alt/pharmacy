@@ -30,6 +30,10 @@ class Game {
         this.purchasedMachines = new Set();
         this.hasPorsche = false;
         this.won = false;
+        this.employeeCount = 0;
+        this.pharmacistCount = 0;
+        this.employeeTraining = 0;
+        this.pharmacistTraining = 0;
 
         this.exp = 0;
         this.level = 1;
@@ -137,8 +141,14 @@ class Game {
             this.player.shieldName = '오구멘틴 보호막';
             this.messages.push({ text: '오구멘틴 보호막 7초!', x: drop.x, y: drop.y, time: 2, color: '#ffbd70' });
         } else if (drop.type === 'staff') {
-            this.staff.push(new StaffCompanion(this.player, this));
-            this.messages.push({ text: '근무약사 출근! (30초)', x: drop.x, y: drop.y, time: 1.7, color: '#75c9ff' });
+            const limit = this.getPharmacyTier().pharmacistLimit;
+            if (this.staff.length < limit) {
+                this.staff.push(new StaffCompanion(this.player, this));
+                this.messages.push({ text: '지원 근무약사 출근! (30초)', x: drop.x, y: drop.y, time: 1.7, color: '#75c9ff' });
+            } else {
+                this.cash += 5000;
+                this.messages.push({ text: '근무 공간 부족 · 지원금 +5,000원', x: drop.x, y: drop.y, time: 1.7, color: '#ffe08a' });
+            }
         } else {
             const upgrades = [
                 ['처방전 강화! 피해 +5', () => this.baseDamage += 5],
@@ -154,7 +164,7 @@ class Game {
     enemyDefeated(type) {
         const isBoss = type && type.startsWith('중간보스');
         const baseRevenue = isBoss ? 22000 + this.stage * 7000 : type === '의사' ? 2400 : 1100;
-        this.cash += Math.round(baseRevenue * (1 + (this.pharmacyLevel - 1) * 0.28));
+        this.cash += Math.round(baseRevenue * this.getRevenueMultiplier());
         if (isBoss) {
             const clearedStage = this.stage;
             this.bossActive = false;
@@ -190,24 +200,42 @@ class Game {
     }
 
     getShopItems() {
-        const goodwillPrices = [30000, 90000, 240000];
+        const tier = this.getPharmacyTier();
+        const nextTier = Game.PHARMACY_TIERS[this.pharmacyLevel];
         const machines = [
-            { id: 'roll-packer', name: '돌돌이 포장기', price: 22000, power: 2, desc: '보조 자동공격을 시작합니다.' },
-            { id: 'atc-44', name: 'ATC 44포', price: 65000, power: 4, desc: '자동공격 속도를 높입니다.' },
-            { id: 'atc-88', name: 'ATC 88포', price: 135000, power: 6, desc: '자동공격 속도와 연사 수를 높입니다.' },
-            { id: 'atc-144', name: 'ATC 144포', price: 260000, power: 9, desc: '고속 다중 자동공격을 지원합니다.' },
-            { id: 'atc-300', name: 'ATC 300포', price: 480000, power: 13, desc: '최고급 다중 자동조제 설비입니다.' }
+            { id: 'roll-packer', name: '돌돌이 포장기', price: 45000, power: 2, requiredLevel: 1, desc: '기초 보조 자동공격을 시작합니다.' },
+            { id: 'atc-44', name: 'ATC 44포', price: 160000, power: 4, requiredLevel: 1, desc: '동네약국용 소형 자동조제기입니다.' },
+            { id: 'atc-88', name: 'ATC 88포', price: 450000, power: 6, requiredLevel: 2, desc: '의원문전약국부터 설치할 수 있습니다.' },
+            { id: 'atc-144', name: 'ATC 144포', price: 1200000, power: 9, requiredLevel: 3, desc: '메디컬빌딩약국용 고속 설비입니다.' },
+            { id: 'atc-300', name: 'ATC 300포', price: 3000000, power: 13, requiredLevel: 4, desc: '종합병원문전약국용 최고급 설비입니다.' }
         ];
         return [
             { id: 'bacchus', category: '회복', name: '박카스', price: 2500, desc: 'HP 30 회복' },
             { id: 'becomc', category: '회복', name: '삐콤씨', price: 5500, desc: 'HP 60 회복' },
             { id: 'sipjeondaebo', category: '회복', name: '십전대보탕', price: 11000, desc: 'HP를 전부 회복' },
             { id: 'placenta', category: '회복', name: '인태반', price: 22000, desc: '최대 HP +10, 전부 회복' },
-            { id: 'goodwill', category: '약국', name: `권리금 · 약국 ${this.pharmacyLevel + 1}단계`, price: goodwillPrices[this.pharmacyLevel - 1] || 0, desc: '처치 수입 +28%, 공격력 +3', soldOut: this.pharmacyLevel >= 4 },
-            ...machines.map(machine => ({ ...machine, category: '자동조제', soldOut: this.purchasedMachines.has(machine.id) })),
-            { id: 'porsche', category: '인생 목표', name: '포르쉐', price: 650000, desc: '원베일리 입성에 필요한 드림카', soldOut: this.hasPorsche },
-            { id: 'one-bailey', category: '인생 목표', name: '반포 원베일리 한강뷰', price: 2400000, desc: '최종 엔딩을 해금합니다.', locked: !this.hasPorsche, lockText: '포르쉐를 먼저 구매하세요' }
+            { id: 'goodwill', category: '약국', name: nextTier ? `권리금 · ${nextTier.name}` : '최고 규모 달성', price: nextTier?.goodwillCost || 0, desc: nextTier ? `수입 배율 상승 · 직원 ${nextTier.employeeLimit}명 · 근무약사 ${nextTier.pharmacistLimit}명` : '종합병원문전약국 운영 중', soldOut: !nextTier },
+            { id: 'hire-employee', category: '인력', name: '직원 채용', price: 80000 + this.employeeCount * 75000, desc: `수입과 드롭 회수 범위 향상 · ${this.employeeCount}/${tier.employeeLimit}명`, soldOut: this.employeeCount >= tier.employeeLimit },
+            { id: 'hire-pharmacist', category: '인력', name: '근무약사 채용', price: 180000 + this.pharmacistCount * 160000, desc: `영구 자동공격 동료 · ${this.pharmacistCount}/${tier.pharmacistLimit}명`, soldOut: this.pharmacistCount >= tier.pharmacistLimit, locked: this.staff.length >= tier.pharmacistLimit && this.pharmacistCount < tier.pharmacistLimit, lockText: '지원 근무약사 퇴근 후 채용 가능' },
+            { id: 'employee-training', category: '연수교육', name: '직원 연수교육', price: 120000 * (this.employeeTraining + 1), desc: `수입·회수 능력 향상 · 교육 ${this.employeeTraining}/5`, soldOut: this.employeeTraining >= 5, locked: this.employeeCount === 0, lockText: '직원을 먼저 채용하세요' },
+            { id: 'pharmacist-training', category: '연수교육', name: '근무약사 연수교육', price: 220000 * (this.pharmacistTraining + 1), desc: `공격력·공격속도 향상 · 교육 ${this.pharmacistTraining}/5`, soldOut: this.pharmacistTraining >= 5, locked: this.pharmacistCount === 0, lockText: '근무약사를 먼저 채용하세요' },
+            ...machines.map(machine => ({ ...machine, category: '자동조제', soldOut: this.purchasedMachines.has(machine.id), locked: this.pharmacyLevel < machine.requiredLevel, lockText: `${Game.PHARMACY_TIERS[machine.requiredLevel - 1].name} 필요` })),
+            { id: 'porsche', category: '인생 목표', name: '포르쉐', price: 1200000, desc: '원베일리 입성에 필요한 드림카', soldOut: this.hasPorsche },
+            { id: 'one-bailey', category: '인생 목표', name: '반포 원베일리 한강뷰', price: 12000000, desc: '최종 엔딩을 해금합니다.', locked: !this.hasPorsche, lockText: '포르쉐를 먼저 구매하세요' }
         ];
+    }
+
+    getPharmacyTier() {
+        return Game.PHARMACY_TIERS[this.pharmacyLevel - 1];
+    }
+
+    getRevenueMultiplier() {
+        const staffBonus = this.employeeCount * (0.07 + this.employeeTraining * 0.015);
+        return this.getPharmacyTier().revenueMultiplier + staffBonus;
+    }
+
+    expToNextLevel() {
+        return 160 + (this.level - 1) * 110;
     }
 
     purchaseShopItem(id) {
@@ -219,8 +247,18 @@ class Game {
         else if (id === 'becomc') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 60);
         else if (id === 'sipjeondaebo') this.player.hp = this.player.maxHp;
         else if (id === 'placenta') { this.player.maxHp += 10; this.player.hp = this.player.maxHp; }
-        else if (id === 'goodwill') { this.pharmacyLevel++; this.baseDamage += 3; }
-        else if (id === 'porsche') this.hasPorsche = true;
+        else if (id === 'goodwill') { this.pharmacyLevel++; this.baseDamage += 2; }
+        else if (id === 'hire-employee') this.employeeCount++;
+        else if (id === 'hire-pharmacist') {
+            this.pharmacistCount++;
+            this.staff.push(new StaffCompanion(this.player, this, true, this.pharmacistCount - 1));
+        }
+        else if (id === 'employee-training') this.employeeTraining++;
+        else if (id === 'pharmacist-training') this.pharmacistTraining++;
+        else if (id === 'porsche') {
+            this.hasPorsche = true;
+            if (window.showPurchaseAnimation) window.showPurchaseAnimation('porsche');
+        }
         else if (id === 'one-bailey') {
             this.won = true;
             this.isPaused = true;
@@ -243,8 +281,8 @@ class Game {
 
     addExp(amount) {
         this.exp += amount;
-        if (this.exp >= this.level * 100 && !this.isPaused) {
-            this.exp -= this.level * 100;
+        if (this.exp >= this.expToNextLevel() && !this.isPaused) {
+            this.exp -= this.expToNextLevel();
             this.level++;
             this.isPaused = true;
             window.onLevelUp();
@@ -297,7 +335,8 @@ class Game {
         this.enemies.forEach(e => e.update(dt));
         this.staff.forEach(s => s.update(dt));
         this.drops.forEach(drop => {
-            if (Utils.distance(drop.x, drop.y, this.player.x, this.player.y) < this.player.radius + 22) drop.collected = true;
+            const staffPickupBonus = this.employeeCount * 8 + this.employeeTraining * 5;
+            if (Utils.distance(drop.x, drop.y, this.player.x, this.player.y) < this.player.radius + 22 + staffPickupBonus) drop.collected = true;
             if (drop.collected) this.collectDrop(drop);
         });
         this.drops = this.drops.filter(drop => !drop.collected);
@@ -388,7 +427,7 @@ class Game {
 }
 
 class StaffCompanion {
-    constructor(player, game) { this.player = player; this.game = game; this.active = true; this.time = 30; this.phase = Math.random() * Math.PI * 2; this.attackTimer = 0; }
+    constructor(player, game, permanent = false, slot = 0) { this.player = player; this.game = game; this.active = true; this.permanent = permanent; this.slot = slot; this.time = permanent ? Infinity : 30; this.phase = Math.random() * Math.PI * 2; this.attackTimer = 0; }
     update(dt) {
         this.time -= dt;
         this.phase += dt * 5;
@@ -396,7 +435,7 @@ class StaffCompanion {
         const target = this.game.enemies.find(enemy => Utils.distance(enemy.x, enemy.y, this.player.x, this.player.y) < 240);
         if (target && this.attackTimer <= 0) {
             const projectile = new Projectile(this.player.x, this.player.y, target.x, target.y, this.game);
-            projectile.damage = 7;
+            projectile.damage = 7 + this.game.pharmacyLevel + this.game.pharmacistTraining * 3;
             projectile.radius = 4;
             projectile.color = '#82dcff';
             projectile.speed = 450;
@@ -404,9 +443,9 @@ class StaffCompanion {
             projectile.vx = Math.cos(angle) * projectile.speed;
             projectile.vy = Math.sin(angle) * projectile.speed;
             this.game.projectiles.push(projectile);
-            this.attackTimer = 0.65;
+            this.attackTimer = Math.max(0.28, 0.68 - this.game.pharmacistTraining * 0.07);
         }
-        if (this.time <= 0) {
+        if (!this.permanent && this.time <= 0) {
             this.active = false;
             const lines = ['어제 술먹어서 오늘 출근 못해요~~', '저 퇴근합니다! 약은 챙겨 드세요~~', '근무 끝! 다음 타임에 봬요~~'];
             const line = lines[Math.floor(Math.random() * lines.length)];
@@ -415,8 +454,9 @@ class StaffCompanion {
         }
     }
     draw(ctx, cameraX, cameraY) {
-        const x = this.player.x - cameraX + Math.cos(this.phase) * 42;
-        const y = this.player.y - cameraY + Math.sin(this.phase) * 25;
+        const orbit = 42 + this.slot * 9;
+        const x = this.player.x - cameraX + Math.cos(this.phase + this.slot * 1.7) * orbit;
+        const y = this.player.y - cameraY + Math.sin(this.phase + this.slot * 1.7) * (25 + this.slot * 4);
         ctx.save(); ctx.fillStyle = '#5bbcff'; ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('근무약사', x, y + 3);
         ctx.restore();
@@ -435,3 +475,10 @@ function drawMessage(ctx, message, cameraX, cameraY) {
     ctx.save(); ctx.globalAlpha = Math.min(1, message.time); ctx.fillStyle = message.color; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(message.text, message.x - cameraX, message.y - cameraY - (1.5 - message.time) * 22); ctx.restore();
 }
+
+Game.PHARMACY_TIERS = [
+    { name: '동네약국', goodwillCost: 0, employeeLimit: 1, pharmacistLimit: 1, revenueMultiplier: 1 },
+    { name: '의원문전약국', goodwillCost: 350000, employeeLimit: 2, pharmacistLimit: 2, revenueMultiplier: 1.4 },
+    { name: '메디컬빌딩약국', goodwillCost: 1400000, employeeLimit: 4, pharmacistLimit: 3, revenueMultiplier: 2.0 },
+    { name: '종합병원문전약국', goodwillCost: 4800000, employeeLimit: 7, pharmacistLimit: 5, revenueMultiplier: 3.1 }
+];
