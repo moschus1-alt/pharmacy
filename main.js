@@ -7,11 +7,14 @@ window.onload = () => {
     let selectedProfile = profiles.minjun;
 
     function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        const viewport = window.visualViewport;
+        canvas.width = Math.round(viewport?.width || window.innerWidth);
+        canvas.height = Math.round(viewport?.height || window.innerHeight);
     }
 
     window.addEventListener('resize', resize);
+    window.visualViewport?.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', () => setTimeout(resize, 150));
     resize();
 
     let game = null;
@@ -39,6 +42,12 @@ window.onload = () => {
     const pauseModal = document.getElementById('pause-modal');
     const resumeButton = document.getElementById('resume-button');
     const quitButton = document.getElementById('quit-button');
+    const shopModal = document.getElementById('shop-modal');
+    const shopContainer = document.getElementById('shop-container');
+    const shopCash = document.getElementById('shop-cash');
+    const shopSummary = document.getElementById('shop-summary');
+    const shopContinue = document.getElementById('shop-continue');
+    const endingModal = document.getElementById('ending-modal');
     let pauseMenuOpen = false;
     let gameOverSoundPlayed = false;
 
@@ -61,6 +70,61 @@ window.onload = () => {
         game.isGameOver = true;
         pauseModal.style.display = 'none';
     };
+
+    const renderShop = (notice = '') => {
+        if (!game) return;
+        shopCash.textContent = `보유 현금 ${game.cash.toLocaleString()}원`;
+        if (notice) shopSummary.textContent = notice;
+        shopContainer.innerHTML = '';
+        const categories = [...new Set(game.getShopItems().map(item => item.category))];
+        categories.forEach(category => {
+            const section = document.createElement('section');
+            section.className = 'shop-category';
+            section.innerHTML = `<h2>${category}</h2>`;
+            const grid = document.createElement('div');
+            grid.className = 'shop-grid';
+            game.getShopItems().filter(item => item.category === category).forEach(item => {
+                const button = document.createElement('button');
+                button.className = 'shop-item';
+                button.disabled = item.soldOut || item.locked;
+                button.innerHTML = `<strong>${item.name}</strong><span>${item.desc}</span><b>${item.soldOut ? '구매 완료' : item.locked ? item.lockText : `${item.price.toLocaleString()}원`}</b>`;
+                button.onclick = () => {
+                    const result = game.purchaseShopItem(item.id);
+                    renderShop(result.message);
+                };
+                grid.appendChild(button);
+            });
+            section.appendChild(grid);
+            shopContainer.appendChild(section);
+        });
+    };
+
+    window.openStageShop = (activeGame, clearedStage) => {
+        if (activeGame !== game) return;
+        shopSummary.textContent = `STAGE ${clearedStage} 정산 완료 · 체력을 회복하거나 약국을 키워 다음 근무를 준비하세요.`;
+        shopModal.style.display = 'block';
+        renderShop();
+    };
+
+    shopContinue.onclick = () => {
+        if (!game) return;
+        shopModal.style.display = 'none';
+        game.finishShopping();
+        window.showStaffDialog(`약국 ${game.pharmacyLevel}단계 · 다음 야간 근무를 시작합니다!`);
+    };
+
+    window.showGameEnding = (activeGame) => {
+        shopModal.style.display = 'none';
+        endingModal.style.display = 'grid';
+        document.getElementById('ending-score').textContent = `최종 기록 · STAGE ${activeGame.stage} · 약국 ${activeGame.pharmacyLevel}단계`;
+    };
+    document.getElementById('ending-restart').onclick = () => location.reload();
+
+    const touchSkill = document.getElementById('touch-skill');
+    touchSkill.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        if (game) game.fireEmergencyPrescription();
+    });
 
     // 업그레이드 UI 관련
     const upgradeModal = document.getElementById('upgrade-modal');
@@ -121,7 +185,7 @@ window.onload = () => {
         game.draw();
 
         // UI 업데이트
-        document.getElementById('character-bar').innerText = `${selectedProfile.name} · ${selectedProfile.role}`;
+        document.getElementById('character-bar').innerText = `${selectedProfile.name} · 약국 ${game.pharmacyLevel}단계 · ${game.cash.toLocaleString()}원`;
         hpUi.innerText = `HP  ${Math.ceil(Math.max(0, game.player.hp))} / ${game.player.maxHp}`;
         levelUi.innerText = game.bossActive
             ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}`
@@ -129,6 +193,8 @@ window.onload = () => {
         skillUi.innerText = game.novaCooldown > 0
             ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초`
             : `시럽투척: 사용 가능 (Q)`;
+        touchSkill.classList.toggle('ready', game.novaCooldown <= 0);
+        touchSkill.querySelector('span').textContent = game.novaCooldown > 0 ? `${game.novaCooldown.toFixed(1)}초` : '시럽투척';
 
         requestAnimationFrame(gameLoop);
     }
