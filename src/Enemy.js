@@ -50,8 +50,17 @@ class Enemy {
         const speed = this.slowTimer > 0 ? this.speed * 0.4 : this.speed;
         this.x += Math.cos(ang) * speed * dt;
         this.y += Math.sin(ang) * speed * dt;
-        if (Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang))) this.facingRow = Math.cos(ang) < 0 ? 1 : 2;
-        else this.facingRow = Math.sin(ang) < 0 ? 3 : 0;
+        // 대각선 경계에서 목표 위치가 미세하게 흔들려 좌우 이미지가 번갈아
+        // 바뀌지 않도록, 한 축이 충분히 우세할 때만 방향을 갱신합니다.
+        const horizontal = Math.abs(Math.cos(ang));
+        const vertical = Math.abs(Math.sin(ang));
+        if (horizontal > vertical * 1.18) {
+            // 여자 진상 시트는 좌·우 행의 순서가 다른 적 시트와 반대입니다.
+            const leftRow = this.type === '여자 진상' ? 2 : 1;
+            const rightRow = this.type === '여자 진상' ? 1 : 2;
+            this.facingRow = Math.cos(ang) < 0 ? leftRow : rightRow;
+        }
+        else if (vertical > horizontal * 1.18) this.facingRow = Math.sin(ang) < 0 ? 3 : 0;
         this.walkTimer += dt;
         this.walkFrame = [1, 2, 3, 2][Math.floor(this.walkTimer / 0.12) % 4];
         if (this.type.startsWith('중간보스')) {

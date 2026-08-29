@@ -72,7 +72,10 @@ body, html {
 .character-select { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
 .character-card { display: grid; gap: 8px; padding: 22px; border: 1px solid #426073; border-radius: 16px; color: #dbe9ef; background: rgba(5, 17, 31, .76); cursor: pointer; text-align: left; transition: .18s ease; }
 .character-card:hover, .character-card.selected { transform: translateY(-4px); border-color: #81f5df; background: rgba(28, 78, 89, .72); box-shadow: 0 12px 28px rgba(67,236,213,.16); }
-.character-card strong { font-size: 25px; color: white; }.character-card small { color: #81f5df; }.character-icon { font-size: 44px; }
+.character-card strong { font-size: 25px; color: white; }.character-card small { color: #81f5df; }
+.character-avatar { display: block; width: 112px; height: 112px; margin: -8px 0 4px; border: 2px solid rgba(129,245,223,.42); border-radius: 50%; background-color: rgba(4, 19, 35, .8); background-repeat: no-repeat; background-size: cover; background-position: center; box-shadow: inset 0 0 20px rgba(129,245,223,.12), 0 8px 18px rgba(0,0,0,.32); filter: drop-shadow(0 5px 5px rgba(0,0,0,.3)); }
+.minjun-avatar { background-image: url('assets/minjun-portrait.png'); }
+.seoyeon-avatar { background-image: url('assets/seoyeon-portrait.png'); }
 .quote { min-height: 24px; margin: 23px 0 16px; color: #ffdf9d; font-weight: bold; }
 .primary-button, #game-over button { padding: 14px 32px; border: 0; border-radius: 10px; color: #042227; background: #81f5df; font-size: 18px; font-weight: 800; cursor: pointer; transition: .15s; }.primary-button:hover, #game-over button:hover { transform: scale(1.03); background: #c2fff4; }
 .controls { margin: 17px 0 0; color: #91a8b9; font-size: 13px; }

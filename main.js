@@ -115,8 +115,8 @@ window.onload = () => {
             ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}`
             : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.level * 100})`;
         skillUi.innerText = game.novaCooldown > 0
-            ? `긴급 처방  ${game.novaCooldown.toFixed(1)}초`
-            : `긴급 처방: 준비 ${game.enemies.length < 5 ? `(적 ${5 - game.enemies.length}마리 더 필요)` : '(Q)'}`;
+            ? `자동조제 충전 중  ${game.novaCooldown.toFixed(1)}초`
+            : `자동조제: 사용 가능 (Q)`;
 
         requestAnimationFrame(gameLoop);
     }
@@ -133,7 +133,7 @@ window.onload = () => {
         window.gameAudio.start();
         game = new Game(canvas, selectedProfile);
         document.getElementById('start-screen').style.display = 'none';
-        window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 적이 몰리면 Q로 긴급 처방을 쓰세요!`);
+        window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 자동조제가 충전되면 Q로 사용하세요!`);
         requestAnimationFrame(gameLoop);
     });
 };

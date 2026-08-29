@@ -16,7 +16,7 @@ class Game {
         this.staff = [];
         this.messages = [];
         this.fireZones = [];
-        this.novaCooldown = 0;
+        this.novaCooldown = 10;
         this.stage = 1;
         this.stageKills = 0;
         this.stageTarget = 18;
@@ -72,10 +72,6 @@ class Game {
 
     fireEmergencyPrescription() {
         if (this.isPaused || this.isGameOver || this.novaCooldown > 0) return;
-        if (this.enemies.length < 5) {
-            this.messages.push({ text: '적이 더 몰려야 긴급 처방이 가능합니다!', x: this.player.x, y: this.player.y - 45, time: 1.4, color: '#ffb3a7' });
-            return;
-        }
         const count = 14;
         for (let i = 0; i < count; i++) {
             const angle = (Math.PI * 2 * i) / count;
@@ -88,9 +84,9 @@ class Game {
             projectile.vy = Math.sin(angle) * projectile.speed;
             this.projectiles.push(projectile);
         }
-        this.novaCooldown = 12;
+        this.novaCooldown = 14;
         this.fireZones.push({ x: this.player.x, y: this.player.y, radius: 175, time: 2.2, damageTimer: 0 });
-        this.messages.push({ text: '긴급 처방 발동!!', x: this.player.x, y: this.player.y - 50, time: 1.5, color: '#ffe66d' });
+        this.messages.push({ text: '자동조제 발동!!', x: this.player.x, y: this.player.y - 50, time: 1.5, color: '#ffe66d' });
     }
 
     spawnDrop(x, y) {
