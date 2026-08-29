@@ -137,7 +137,36 @@ body, html {
 #ending-panel h1 { margin: 10px 0; font-size: clamp(34px, 8vw, 58px); }
 #ending-panel p { color: #d5e0e9; line-height: 1.65; }
 #ending-panel strong { display: block; margin: 22px 0; color: #ffe08a; }
-.ending-icons { margin: 18px 0; font-size: clamp(45px, 12vw, 76px); }
+.ending-scene { position: relative; height: 220px; margin: 22px 0; overflow: hidden; border: 1px solid rgba(255,224,138,.45); border-radius: 18px; background: linear-gradient(#182f5e 0%, #ec8f70 52%, #183252 53%, #071627 100%); box-shadow: inset 0 0 40px rgba(0,0,0,.35); }
+.scene-skyline { position: absolute; right: 3%; bottom: 42%; display: flex; align-items: end; gap: 4px; }
+.scene-skyline i { width: 24px; height: 62px; border: 1px solid #607790; background: repeating-linear-gradient(90deg, #152339 0 5px, #ffd979 6px 8px); animation: building-lights 1.2s steps(2) infinite alternate; }
+.scene-skyline i:nth-child(2) { height: 92px; }.scene-skyline i:nth-child(3) { height: 72px; }.scene-skyline i:nth-child(4) { height: 112px; }.scene-skyline i:nth-child(5) { height: 54px; }
+.scene-river { position: absolute; inset: 58% 0 23%; background: repeating-linear-gradient(170deg, rgba(151,220,255,.5) 0 3px, rgba(22,83,132,.55) 4px 10px); background-size: 150% 100%; animation: river-flow 2s linear infinite; }
+.scene-road { position: absolute; inset: 77% 0 0; background: #18202a; border-top: 3px solid #8b9aa7; }
+.scene-road::after { content: ''; position: absolute; left: 0; right: 0; top: 48%; height: 3px; background: repeating-linear-gradient(90deg, #ffe08a 0 32px, transparent 33px 58px); animation: road-flow .8s linear infinite; }
+.scene-car { position: absolute; z-index: 2; left: -18%; bottom: 3%; font-size: 62px; filter: drop-shadow(0 8px 5px rgba(0,0,0,.55)); animation: ending-drive 5.2s cubic-bezier(.3,.1,.18,1) infinite; }
+.scene-home { position: absolute; z-index: 3; right: 5%; top: 15%; padding: 13px 10px; border: 2px solid #ffe08a; border-radius: 6px; color: #ffe8a8; background: rgba(9,20,39,.84); font-size: 13px; font-weight: 900; line-height: 1.1; letter-spacing: .08em; box-shadow: 0 0 18px rgba(255,224,138,.45); animation: home-arrival 5.2s ease-in-out infinite; }
+
+#purchase-animation { visibility: hidden; position: fixed; z-index: 130; inset: 0; display: grid; place-content: center; padding: 24px; color: white; background: rgba(2,8,18,.92); text-align: center; opacity: 0; pointer-events: none; }
+#purchase-animation.active { visibility: visible; pointer-events: auto; animation: milestone-screen 2.8s ease both; }
+#purchase-animation h2 { margin: 20px 0 4px; color: #ffe08a; font-size: clamp(30px, 8vw, 52px); }
+#purchase-animation p { color: #c8d6e4; }
+.milestone-scene { position: relative; width: min(620px, 86vw); height: 180px; overflow: hidden; border-radius: 18px; background: linear-gradient(#173355 0 60%, #1b222c 61%); box-shadow: inset 0 -35px #151b23, 0 25px 70px rgba(0,0,0,.5); }
+.milestone-scene::after { content: ''; position: absolute; left: 0; right: 0; bottom: 29px; height: 4px; background: repeating-linear-gradient(90deg, #ffe08a 0 38px, transparent 39px 68px); animation: road-flow .45s linear infinite; }
+.speed-line { position: absolute; inset: 24px 0 70px; opacity: .35; background: repeating-linear-gradient(0deg, transparent 0 16px, #b8eaff 17px 19px); transform: skewX(-25deg); }
+.milestone-car { position: absolute; z-index: 2; left: -25%; bottom: 18px; font-size: 86px; animation: porsche-pass 2.4s cubic-bezier(.18,.74,.28,1) both; filter: drop-shadow(0 10px 6px rgba(0,0,0,.55)); }
+
+@keyframes building-lights { to { filter: brightness(1.45); } }
+@keyframes river-flow { to { background-position: 150% 0; } }
+@keyframes road-flow { to { background-position: -58px 0; } }
+@keyframes ending-drive { 0% { left: -18%; transform: translateY(0); } 55% { left: 50%; transform: translateY(-3px); } 72%,100% { left: 64%; transform: translateY(0); } }
+@keyframes home-arrival { 0%,48% { opacity: .2; transform: scale(.82); } 72%,100% { opacity: 1; transform: scale(1); } }
+@keyframes milestone-screen { 0% { opacity: 0; } 10%,82% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes porsche-pass { 0% { left: -25%; transform: scale(.8); } 65% { left: 46%; transform: scale(1.08); } 100% { left: 112%; transform: scale(.92); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .scene-car, .scene-home, .scene-river, .scene-road::after, .scene-skyline i, .milestone-car, .milestone-scene::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
 
 #mobile-controls { display: none; }
 #touch-stick { position: fixed; left: max(22px, env(safe-area-inset-left)); bottom: max(24px, env(safe-area-inset-bottom)); z-index: 40; width: 132px; height: 132px; border: 2px solid rgba(208,246,255,.45); border-radius: 50%; background: rgba(7,25,42,.58); box-shadow: inset 0 0 28px rgba(90,210,255,.15); touch-action: none; }
