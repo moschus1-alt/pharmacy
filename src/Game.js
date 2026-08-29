@@ -24,6 +24,12 @@ class Game {
         this.bossActive = false;
         this.autoCharges = 0;
         this.barcodeCharges = 0;
+        this.cash = 0;
+        this.pharmacyLevel = 1;
+        this.machinePower = 0;
+        this.purchasedMachines = new Set();
+        this.hasPorsche = false;
+        this.won = false;
 
         this.exp = 0;
         this.level = 1;
@@ -105,7 +111,7 @@ class Game {
         if (roll < 0.025) this.drops.push({ x, y, type: 'cefaclor', bob: Math.random() * Math.PI * 2 });
         else if (roll < 0.05) this.drops.push({ x, y, type: 'augmentin', bob: Math.random() * Math.PI * 2 });
         else if (roll < 0.075) this.drops.push({ x, y, type: 'auto', bob: Math.random() * Math.PI * 2 });
-        else if (roll < 0.075) this.drops.push({ x, y, type: 'barcode', bob: Math.random() * Math.PI * 2 });
+        else if (roll < 0.10) this.drops.push({ x, y, type: 'barcode', bob: Math.random() * Math.PI * 2 });
         else if (roll < 0.13) this.drops.push({ x, y, type: 'staff', bob: Math.random() * Math.PI * 2 });
         else if (roll < 0.18) this.drops.push({ x, y, type: 'upgrade', bob: Math.random() * Math.PI * 2 });
         else if (roll < 0.28) this.drops.push({ x, y, type: 'potion', bob: Math.random() * Math.PI * 2 });
@@ -146,7 +152,11 @@ class Game {
     }
 
     enemyDefeated(type) {
-        if (type && type.startsWith('중간보스')) {
+        const isBoss = type && type.startsWith('중간보스');
+        const baseRevenue = isBoss ? 22000 + this.stage * 7000 : type === '의사' ? 2400 : 1100;
+        this.cash += Math.round(baseRevenue * (1 + (this.pharmacyLevel - 1) * 0.28));
+        if (isBoss) {
+            const clearedStage = this.stage;
             this.bossActive = false;
             this.stage++;
             this.stageKills = 0;
@@ -155,6 +165,13 @@ class Game {
             this.drops.push({ x: this.player.x - 35, y: this.player.y, type: 'potion', bob: 1 });
             this.messages.push({ text: `중간보스 격파! STAGE ${this.stage} 시작!`, x: this.player.x, y: this.player.y - 70, time: 2.5, color: '#ffe66d' });
             window.gameAudio.bossDefeat();
+            this.enemies.forEach(enemy => { enemy.active = false; });
+            this.enemyProjectiles = [];
+            this.isPaused = true;
+            window.gameAudio.setPaused(true);
+            setTimeout(() => {
+                if (window.openStageShop && !this.won) window.openStageShop(this, clearedStage);
+            }, 120);
             return;
         }
         if (this.bossActive) return;
@@ -170,6 +187,58 @@ class Game {
             window.gameAudio.bossAppear();
             this.messages.push({ text: '중간보스 출현!!', x: this.player.x, y: this.player.y - 70, time: 2.2, color: '#ff7a67' });
         }
+    }
+
+    getShopItems() {
+        const goodwillPrices = [30000, 90000, 240000];
+        const machines = [
+            { id: 'roll-packer', name: '돌돌이 포장기', price: 22000, power: 2, desc: '보조 자동공격을 시작합니다.' },
+            { id: 'atc-44', name: 'ATC 44포', price: 65000, power: 4, desc: '자동공격 속도를 높입니다.' },
+            { id: 'atc-88', name: 'ATC 88포', price: 135000, power: 6, desc: '자동공격 속도와 연사 수를 높입니다.' },
+            { id: 'atc-144', name: 'ATC 144포', price: 260000, power: 9, desc: '고속 다중 자동공격을 지원합니다.' },
+            { id: 'atc-300', name: 'ATC 300포', price: 480000, power: 13, desc: '최고급 다중 자동조제 설비입니다.' }
+        ];
+        return [
+            { id: 'bacchus', category: '회복', name: '박카스', price: 2500, desc: 'HP 30 회복' },
+            { id: 'becomc', category: '회복', name: '삐콤씨', price: 5500, desc: 'HP 60 회복' },
+            { id: 'sipjeondaebo', category: '회복', name: '십전대보탕', price: 11000, desc: 'HP를 전부 회복' },
+            { id: 'placenta', category: '회복', name: '인태반', price: 22000, desc: '최대 HP +10, 전부 회복' },
+            { id: 'goodwill', category: '약국', name: `권리금 · 약국 ${this.pharmacyLevel + 1}단계`, price: goodwillPrices[this.pharmacyLevel - 1] || 0, desc: '처치 수입 +28%, 공격력 +3', soldOut: this.pharmacyLevel >= 4 },
+            ...machines.map(machine => ({ ...machine, category: '자동조제', soldOut: this.purchasedMachines.has(machine.id) })),
+            { id: 'porsche', category: '인생 목표', name: '포르쉐', price: 650000, desc: '원베일리 입성에 필요한 드림카', soldOut: this.hasPorsche },
+            { id: 'one-bailey', category: '인생 목표', name: '반포 원베일리 한강뷰', price: 2400000, desc: '최종 엔딩을 해금합니다.', locked: !this.hasPorsche, lockText: '포르쉐를 먼저 구매하세요' }
+        ];
+    }
+
+    purchaseShopItem(id) {
+        const item = this.getShopItems().find(entry => entry.id === id);
+        if (!item || item.soldOut || item.locked) return { ok: false, message: item?.lockText || '구매할 수 없습니다.' };
+        if (this.cash < item.price) return { ok: false, message: `${(item.price - this.cash).toLocaleString()}원이 부족합니다.` };
+        this.cash -= item.price;
+        if (id === 'bacchus') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
+        else if (id === 'becomc') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 60);
+        else if (id === 'sipjeondaebo') this.player.hp = this.player.maxHp;
+        else if (id === 'placenta') { this.player.maxHp += 10; this.player.hp = this.player.maxHp; }
+        else if (id === 'goodwill') { this.pharmacyLevel++; this.baseDamage += 3; }
+        else if (id === 'porsche') this.hasPorsche = true;
+        else if (id === 'one-bailey') {
+            this.won = true;
+            this.isPaused = true;
+            if (window.showGameEnding) window.showGameEnding(this);
+        } else {
+            const machine = this.getShopItems().find(entry => entry.id === id);
+            this.purchasedMachines.add(id);
+            this.machinePower = Math.max(this.machinePower, machine.power || 0);
+        }
+        window.gameAudio.pickup(id === 'bacchus' ? 'potion' : 'upgrade');
+        return { ok: true, message: `${item.name} 구매 완료!` };
+    }
+
+    finishShopping() {
+        if (this.won) return;
+        this.isPaused = false;
+        this.lastTime = performance.now();
+        window.gameAudio.setPaused(false);
     }
 
     addExp(amount) {
@@ -194,6 +263,7 @@ class Game {
         ey = Math.max(0, Math.min(this.map.height, ey));
 
         const customerTypes = ["남자 진상", "여자 진상", "할아버지 진상", "할머니 진상"];
+        if (this.stage >= 2) customerTypes.push("의사");
         let enemyType = customerTypes[Math.floor(Math.random() * customerTypes.length)];
         this.enemies.push(new Enemy(ex, ey, this, enemyType));
     }
@@ -261,6 +331,10 @@ class Game {
             if (!e.active) return;
             if (Utils.circleIntersect(e.x, e.y, e.radius, this.player.x, this.player.y, this.player.radius)) {
                 this.player.takeDamage(e.type.startsWith('중간보스') ? 25 + this.stage * 2 : 10);
+                const angle = Utils.angle(this.player.x, this.player.y, e.x, e.y);
+                const overlap = this.player.radius + e.radius - Utils.distance(e.x, e.y, this.player.x, this.player.y);
+                e.x += Math.cos(angle) * Math.max(4, overlap * 0.55);
+                e.y += Math.sin(angle) * Math.max(4, overlap * 0.55);
             }
         });
         this.enemyProjectiles.forEach(p => {
