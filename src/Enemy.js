@@ -21,7 +21,7 @@ class Enemy {
             this.radius = 34 + bossIndex * 3;
             this.hp = 520 + game.stage * 220 + bossIndex * 120;
             this.maxHp = this.hp;
-            this.expYield = 220 + game.stage * 30;
+            this.expYield = 100 + game.stage * 20;
             this.color = ['#d9534f', '#b24cff', '#ff8a2b', '#4e80ff'][bossIndex];
             this.taunt = ['오늘도 야근 확정이다!', '오늘도 야근 확정이다!', '클레임은 끝나지 않아!', '본사 방침이다!'][bossIndex];
         } else if (type === "의사") {
@@ -29,14 +29,14 @@ class Enemy {
             this.radius = 14;
             this.hp = 15 + game.level * 5;
             this.maxHp = this.hp;
-            this.expYield = 40;
+            this.expYield = 28;
             this.color = "#4da6ff"; // 파란색 계열
         } else {
             this.speed = 80 + Math.random() * 40; // 약간 느리지만 변수가 있음
             this.radius = 16;
             this.hp = 30 + game.level * 10;
             this.maxHp = this.hp;
-            this.expYield = 30;
+            this.expYield = 18;
             this.color = "#ff4d4d"; // 붉은색 계열
         }
     }
