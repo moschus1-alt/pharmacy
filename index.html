@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>약사 생존기 - Phase 1</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -55,12 +55,37 @@
             <button id="quit-button" class="danger-button">게임 종료</button>
         </div>
     </div>
+    <div id="shop-modal" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+        <div id="shop-panel">
+            <div class="shop-heading">
+                <div><p class="eyebrow">STAGE CLEAR</p><h1 id="shop-title">야간 약국 상점</h1></div>
+                <div id="shop-cash">보유 현금 0원</div>
+            </div>
+            <p id="shop-summary"></p>
+            <div id="shop-container"></div>
+            <button id="shop-continue" class="primary-button">다음 근무 시작</button>
+        </div>
+    </div>
+    <div id="ending-modal" role="dialog" aria-modal="true" aria-labelledby="ending-title">
+        <div id="ending-panel">
+            <p class="eyebrow">PHARMACY SUCCESS</p>
+            <h1 id="ending-title">한강뷰 인생 엔딩</h1>
+            <div class="ending-icons">🏎️ 🌉 🏙️</div>
+            <p>포르쉐를 타고 반포 래미안 원베일리 한강뷰 집으로 퇴근합니다.</p>
+            <strong id="ending-score"></strong>
+            <button id="ending-restart" class="primary-button">새 인생 시작</button>
+        </div>
+    </div>
     <div id="staff-dialog" aria-live="polite">
         <div id="staff-portrait">💊</div>
         <div id="staff-dialog-body">
             <div id="staff-dialog-name">근무약사</div>
             <div id="staff-dialog-text"></div>
         </div>
+    </div>
+    <div id="mobile-controls" aria-label="모바일 게임 조작">
+        <div id="touch-stick" aria-label="이동 조이스틱"><div id="touch-knob"></div></div>
+        <button id="touch-skill" type="button"><strong>Q</strong><span>시럽투척</span></button>
     </div>
     <canvas id="gameCanvas"></canvas>
 
