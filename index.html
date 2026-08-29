@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>약사 생존기 - Phase 1</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <section id="start-screen" class="screen" aria-labelledby="game-title">
+        <div class="start-panel">
+            <p class="eyebrow">PHARMACY NIGHT SHIFT</p>
+            <h1 id="game-title">약사 생존기</h1>
+            <p class="intro">몰려드는 손님을 정리하고, 끝없는 야간 근무에서 살아남으세요.</p>
+            <div id="character-select" class="character-select">
+                <button class="character-card selected" data-character="minjun">
+                    <span class="character-icon">🧑‍⚕️</span><strong>민준</strong><small>안정형 · 조제 베테랑</small>
+                    <span>HP 120 · 공격력 11</span><span>이동 4.6 · 공격 0.85초</span>
+                </button>
+                <button class="character-card" data-character="seoyeon">
+                    <span class="character-icon">👩‍⚕️</span><strong>서연</strong><small>기동형 · 빠른 판단</small>
+                    <span>HP 95 · 공격력 9</span><span>이동 5.4 · 공격 0.65초</span>
+                </button>
+            </div>
+            <p id="character-quote" class="quote">“침착하게. 처방전부터 확인하겠습니다.”</p>
+            <button id="start-button" class="primary-button">근무 시작</button>
+            <p class="controls">이동 WASD / 방향키 · 자동 처방 · Q 긴급 처방 · ESC 일시정지</p>
+        </div>
+    </section>
+    <div id="ui-layer">
+        <div id="character-bar"></div>
+        <div id="hp-bar"></div>
+        <div id="level-bar"></div>
+        <div id="skill-bar"></div>
+    </div>
+    <div id="game-over"
+        style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); z-index:100; color:red; font-size:48px; font-weight:bold; background:rgba(0,0,0,0.8); padding:50px; text-align:center; border: 4px solid red; border-radius: 10px;">
+        <span id="game-over-title">근무 종료</span><small id="game-over-score"></small><br>
+        <button onclick="location.reload()">다시 근무하기</button>
+    </div>
+    <div id="upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
+        <div id="upgrade-panel">
+            <h1 id="upgrade-title">레벨 업!</h1>
+            <p>강화 하나를 선택하세요.</p>
+            <div id="upgrade-container"></div>
+        </div>
+    </div>
+    <div id="pause-modal" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <div id="pause-panel">
+            <h1 id="pause-title">일시 정지</h1>
+            <button id="resume-button">계속하기 <small>(ESC)</small></button>
+            <button id="quit-button" class="danger-button">게임 종료</button>
+        </div>
+    </div>
+    <div id="staff-dialog" aria-live="polite">
+        <div id="staff-portrait">💊</div>
+        <div id="staff-dialog-body">
+            <div id="staff-dialog-name">근무약사</div>
+            <div id="staff-dialog-text"></div>
+        </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="src/utils.js"></script>
+    <script src="src/Input.js"></script>
+    <script src="src/Map.js"></script>
+    <script src="src/Projectile.js"></script>
+    <script src="src/Audio.js"></script>
+    <script src="src/Audio.js"></script>
+    <script src="src/Player.js"></script>
+    <script src="src/Enemy.js"></script>
+    <script src="src/Game.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
