@@ -32,8 +32,8 @@ class Game {
         this.baseProjRadius = 5;
 
         this.playerSprite = new Image();
-        this.usesWalkSprite = true;
-        this.playerSprite.src = profile.id === 'seoyeon' ? 'assets/female-pharmacist-walk.png' : 'assets/male-pharmacist-walk.png';
+        this.usesWalkSprite = profile.id !== 'seoyeon';
+        this.playerSprite.src = profile.id === 'seoyeon' ? 'assets/female-pharmacist.png' : 'assets/male-pharmacist-walk.png';
         this.playerSprite.onerror = () => { this.playerSprite.src = 'assets/pharmacist-hero.png'; };
         this.enemySprite = new Image();
         this.enemySprite.src = 'assets/rude-customer.png';

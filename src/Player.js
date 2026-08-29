@@ -113,6 +113,22 @@ class Player {
         }
 
         if (this.game.playerSprite.complete && this.game.playerSprite.naturalWidth > 0) {
+            if (this.profile.id === 'seoyeon') {
+                const size = 108;
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'; ctx.beginPath();
+                ctx.ellipse(this.x - cameraX, this.y - cameraY + 27, 24, 7, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.translate(this.x - cameraX, this.y - cameraY);
+                ctx.rotate(this.facingAngle + Math.PI / 2);
+                ctx.drawImage(this.game.playerSprite, 160, 0, 690, 760, -size / 2, -size / 2, size, size);
+                ctx.restore();
+                ctx.save(); ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+                ctx.strokeStyle = 'rgba(0, 0, 0, .8)'; ctx.lineWidth = 3;
+                ctx.strokeText(this.profile.name, this.x - cameraX, this.y - cameraY - 54);
+                ctx.fillStyle = '#ffc2ee'; ctx.fillText(this.profile.name, this.x - cameraX, this.y - cameraY - 54); ctx.restore();
+                if (this.shieldTimer > 0) this.drawShield(ctx, cameraX, cameraY);
+                return;
+            }
             if (this.game.usesWalkSprite) {
                 const sheetFrame = this.game.playerSprite.naturalWidth / 4;
                 const spriteSize = 100;
