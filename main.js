@@ -48,6 +48,8 @@ window.onload = () => {
     const shopSummary = document.getElementById('shop-summary');
     const shopContinue = document.getElementById('shop-continue');
     const endingModal = document.getElementById('ending-modal');
+    const purchaseAnimation = document.getElementById('purchase-animation');
+    let purchaseAnimationTimer;
     let pauseMenuOpen = false;
     let gameOverSoundPlayed = false;
 
@@ -110,13 +112,21 @@ window.onload = () => {
         if (!game) return;
         shopModal.style.display = 'none';
         game.finishShopping();
-        window.showStaffDialog(`약국 ${game.pharmacyLevel}단계 · 다음 야간 근무를 시작합니다!`);
+        window.showStaffDialog(`${game.getPharmacyTier().name} · 다음 야간 근무를 시작합니다!`);
     };
 
     window.showGameEnding = (activeGame) => {
         shopModal.style.display = 'none';
         endingModal.style.display = 'grid';
-        document.getElementById('ending-score').textContent = `최종 기록 · STAGE ${activeGame.stage} · 약국 ${activeGame.pharmacyLevel}단계`;
+        document.getElementById('ending-score').textContent = `최종 기록 · STAGE ${activeGame.stage} · ${activeGame.getPharmacyTier().name}`;
+    };
+    window.showPurchaseAnimation = (type) => {
+        if (type !== 'porsche') return;
+        clearTimeout(purchaseAnimationTimer);
+        purchaseAnimation.classList.remove('active');
+        void purchaseAnimation.offsetWidth;
+        purchaseAnimation.classList.add('active');
+        purchaseAnimationTimer = setTimeout(() => purchaseAnimation.classList.remove('active'), 2800);
     };
     document.getElementById('ending-restart').onclick = () => location.reload();
 
@@ -131,11 +141,11 @@ window.onload = () => {
     const upgradeContainer = document.getElementById('upgrade-container');
 
     const UPGRADES = [
-        { title: "영양제 투여", desc: "최대 체력 20 증가 및 완전 회복", apply: (player, game) => { player.maxHp += 20; player.hp = player.maxHp; } },
-        { title: "드링크제 각성", desc: "이동 속도 15 증가", apply: (player, game) => { player.speed += 15; } },
-        { title: "약사의 손놀림", desc: "알약 투척 속도 증가", apply: (player, game) => { player.fireRate = Math.max(0.02, player.fireRate * 0.85); } },
-        { title: "처방전 강화", desc: "알약 데미지 5 증가", apply: (player, game) => { game.baseDamage += 5; } },
-        { title: "대용량 포장", desc: "알약 크기(판정) 증가", apply: (player, game) => { game.baseProjRadius += 3; } }
+        { title: "영양제 투여", desc: "최대 체력 10 증가 및 HP 35 회복", apply: (player) => { player.maxHp += 10; player.hp = Math.min(player.maxHp, player.hp + 35); } },
+        { title: "드링크제 각성", desc: "이동 속도 8 증가", apply: (player) => { player.speed += 8; } },
+        { title: "약사의 손놀림", desc: "알약 투척 간격 8% 감소", apply: (player) => { player.fireRate = Math.max(0.18, player.fireRate * 0.92); } },
+        { title: "처방전 강화", desc: "알약 데미지 2 증가", apply: (player, game) => { game.baseDamage += 2; } },
+        { title: "대용량 포장", desc: "알약 크기(판정) 1 증가", apply: (player, game) => { game.baseProjRadius += 1; } }
     ];
 
     window.onLevelUp = () => {
@@ -155,7 +165,7 @@ window.onload = () => {
                 game.isPaused = false;
 
                 // 만약 경험치가 남아있다면 연속 레벨업
-                if (game.exp >= game.level * 100) {
+                if (game.exp >= game.expToNextLevel()) {
                     game.addExp(0);
                 }
             };
@@ -185,11 +195,12 @@ window.onload = () => {
         game.draw();
 
         // UI 업데이트
-        document.getElementById('character-bar').innerText = `${selectedProfile.name} · 약국 ${game.pharmacyLevel}단계 · ${game.cash.toLocaleString()}원`;
+        const tier = game.getPharmacyTier();
+        document.getElementById('character-bar').innerText = `${selectedProfile.name} · ${tier.name} · ${game.cash.toLocaleString()}원 · 직원 ${game.employeeCount}/${tier.employeeLimit} · 약사 ${game.pharmacistCount}/${tier.pharmacistLimit}`;
         hpUi.innerText = `HP  ${Math.ceil(Math.max(0, game.player.hp))} / ${game.player.maxHp}`;
         levelUi.innerText = game.bossActive
             ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}`
-            : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.level * 100})`;
+            : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.expToNextLevel()})`;
         skillUi.innerText = game.novaCooldown > 0
             ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초`
             : `시럽투척: 사용 가능 (Q)`;
@@ -214,12 +225,6 @@ window.onload = () => {
         window.gameAudio.setPaused(false);
         gameOverSoundPlayed = false;
         game = new Game(canvas, selectedProfile);
-        if (new URLSearchParams(location.search).has('test')) {
-            game.cash = 4000000;
-            game.stageTarget = 1;
-            game.baseDamage = 250;
-            game.novaCooldown = 0;
-        }
         document.getElementById('start-screen').style.display = 'none';
         window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 시럽투척이 충전되면 Q로 사용하세요!`);
         requestAnimationFrame(gameLoop);
