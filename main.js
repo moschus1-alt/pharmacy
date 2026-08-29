@@ -21,6 +21,13 @@ window.onload = () => {
     const staffDialog = document.getElementById('staff-dialog');
     const staffDialogText = document.getElementById('staff-dialog-text');
     let staffDialogTimer;
+    const soundToggle = document.getElementById('sound-toggle');
+    soundToggle.addEventListener('click', async () => {
+        const muted = await window.gameAudio.toggleMute();
+        soundToggle.dataset.audioState = window.gameAudio.ctx?.state || 'unavailable';
+        soundToggle.setAttribute('aria-pressed', String(muted));
+        soundToggle.textContent = muted ? '🔇 음향 꺼짐' : '🔊 음향 켜짐';
+    });
 
     window.showStaffDialog = (text) => {
         clearTimeout(staffDialogTimer);
@@ -33,11 +40,13 @@ window.onload = () => {
     const resumeButton = document.getElementById('resume-button');
     const quitButton = document.getElementById('quit-button');
     let pauseMenuOpen = false;
+    let gameOverSoundPlayed = false;
 
     const setPauseMenu = (open) => {
         if (!game) return;
         pauseMenuOpen = open;
         game.isPaused = open;
+        window.gameAudio.setPaused(open);
         pauseModal.style.display = open ? 'block' : 'none';
     };
 
@@ -67,7 +76,6 @@ window.onload = () => {
 
     window.onLevelUp = () => {
         window.gameAudio.levelUp();
-        window.gameAudio.levelUp();
         // 무작위 3개 추출
         const shuffled = [...UPGRADES].sort(() => 0.5 - Math.random());
         const choices = shuffled.slice(0, 3);
@@ -96,6 +104,10 @@ window.onload = () => {
     function gameLoop(timestamp) {
         if (!game) return;
         if (game.isGameOver) {
+            if (!gameOverSoundPlayed) {
+                gameOverSoundPlayed = true;
+                window.gameAudio.gameOver();
+            }
             document.getElementById('game-over-score').textContent = `${selectedProfile.name} 약사 · Lv ${game.level} · STAGE ${game.stage}`;
             gameOverUi.style.display = 'block';
             return;
@@ -115,8 +127,8 @@ window.onload = () => {
             ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}`
             : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.level * 100})`;
         skillUi.innerText = game.novaCooldown > 0
-            ? `자동조제 충전 중  ${game.novaCooldown.toFixed(1)}초`
-            : `자동조제: 사용 가능 (Q)`;
+            ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초`
+            : `시럽투척: 사용 가능 (Q)`;
 
         requestAnimationFrame(gameLoop);
     }
@@ -129,11 +141,15 @@ window.onload = () => {
         });
     });
     document.getElementById('start-button').addEventListener('click', () => {
-        window.gameAudio.start();
-        window.gameAudio.start();
+        window.gameAudio.start().then((running) => {
+            soundToggle.dataset.audioState = running ? 'running' : 'blocked';
+            if (!running) soundToggle.textContent = '🔈 소리 시작';
+        });
+        window.gameAudio.setPaused(false);
+        gameOverSoundPlayed = false;
         game = new Game(canvas, selectedProfile);
         document.getElementById('start-screen').style.display = 'none';
-        window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 자동조제가 충전되면 Q로 사용하세요!`);
+        window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 시럽투척이 충전되면 Q로 사용하세요!`);
         requestAnimationFrame(gameLoop);
     });
 };

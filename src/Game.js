@@ -11,6 +11,7 @@ class Game {
         this.profile = profile;
         this.player = new Player(this.map.width / 2, this.map.height / 2, this, profile);
         this.projectiles = [];
+        this.enemyProjectiles = [];
         this.enemies = [];
         this.drops = [];
         this.staff = [];
@@ -32,21 +33,25 @@ class Game {
         this.baseProjRadius = 5;
 
         this.playerSprite = new Image();
-        this.usesWalkSprite = profile.id !== 'seoyeon';
-        this.playerSprite.src = profile.id === 'seoyeon' ? 'assets/female-pharmacist.png' : 'assets/male-pharmacist-walk.png';
+        this.usesWalkSprite = true;
+        this.playerSprite.src = profile.id === 'seoyeon'
+            ? 'assets/characters-v2/seoyeon-walk.png?v=2'
+            : 'assets/characters-v2/minjun-walk.png?v=2';
         this.playerSprite.onerror = () => { this.playerSprite.src = 'assets/pharmacist-hero.png'; };
         this.enemySprite = new Image();
         this.enemySprite.src = 'assets/rude-customer.png';
         this.maleEnemyWalkSprite = new Image();
-        this.maleEnemyWalkSprite.src = 'assets/male-rude-customer-walk.png';
+        this.maleEnemyWalkSprite.src = 'assets/characters-v2/male-rude-customer-walk.png?v=2';
         this.femaleEnemyWalkSprite = new Image();
-        this.femaleEnemyWalkSprite.src = 'assets/female-rude-customer-walk.png';
+        this.femaleEnemyWalkSprite.src = 'assets/characters-v2/female-rude-customer-walk.png?v=2';
         this.grandfatherEnemyWalkSprite = new Image();
-        this.grandfatherEnemyWalkSprite.src = 'assets/grandfather-rude-customer-walk.png';
+        this.grandfatherEnemyWalkSprite.src = 'assets/characters-v2/grandfather-rude-customer-walk.png?v=2';
         this.grandmotherEnemyWalkSprite = new Image();
-        this.grandmotherEnemyWalkSprite.src = 'assets/grandmother-rude-customer-walk.png';
+        this.grandmotherEnemyWalkSprite.src = 'assets/characters-v2/grandmother-rude-customer-walk.png?v=2';
         this.bossWalkSprite = new Image();
-        this.bossWalkSprite.src = 'assets/midboss-complaint-manager-walk.png';
+        this.bossWalkSprite.src = 'assets/characters-v2/midboss-complaint-manager-walk.png?v=2';
+        this.bossMinionWalkSprite = new Image();
+        this.bossMinionWalkSprite.src = 'assets/characters-v2/boss-summoned-minion-walk.png?v=2';
 
         window.addEventListener('keydown', (event) => {
             if (event.key.toLowerCase() === 'q' && !event.repeat) this.fireEmergencyPrescription();
@@ -70,6 +75,11 @@ class Game {
         this.projectiles.push(new Projectile(x, y, targetX, targetY, this));
     }
 
+    spawnEnemyProjectile(enemy) {
+        const angle = Utils.angle(enemy.x, enemy.y, this.player.x, this.player.y);
+        this.enemyProjectiles.push({ x: enemy.x, y: enemy.y, vx: Math.cos(angle) * 360, vy: Math.sin(angle) * 360, radius: 10, active: true, life: 3 });
+    }
+
     fireEmergencyPrescription() {
         if (this.isPaused || this.isGameOver || this.novaCooldown > 0) return;
         const count = 14;
@@ -86,7 +96,8 @@ class Game {
         }
         this.novaCooldown = 14;
         this.fireZones.push({ x: this.player.x, y: this.player.y, radius: 175, time: 2.2, damageTimer: 0 });
-        this.messages.push({ text: '자동조제 발동!!', x: this.player.x, y: this.player.y - 50, time: 1.5, color: '#ffe66d' });
+        this.messages.push({ text: '시럽투척 발동!!', x: this.player.x, y: this.player.y - 50, time: 1.5, color: '#ffe66d' });
+        window.gameAudio.autoDispense();
     }
 
     spawnDrop(x, y) {
@@ -101,6 +112,7 @@ class Game {
     }
 
     collectDrop(drop) {
+        window.gameAudio.pickup(drop.type);
         if (drop.type === 'potion') {
             this.player.hp = Math.min(this.player.maxHp, this.player.hp + 50);
             this.messages.push({ text: '+50 HP', x: drop.x, y: drop.y, time: 1.2, color: '#7dff9b' });
@@ -142,6 +154,7 @@ class Game {
             this.drops.push({ x: this.player.x + 35, y: this.player.y, type: 'upgrade', bob: 0 });
             this.drops.push({ x: this.player.x - 35, y: this.player.y, type: 'potion', bob: 1 });
             this.messages.push({ text: `중간보스 격파! STAGE ${this.stage} 시작!`, x: this.player.x, y: this.player.y - 70, time: 2.5, color: '#ffe66d' });
+            window.gameAudio.bossDefeat();
             return;
         }
         if (this.bossActive) return;
@@ -154,7 +167,7 @@ class Game {
             const y = Math.max(50, Math.min(this.map.height - 50, this.player.y + Math.sin(angle) * distance));
             const bossTypes = ['중간보스: 불만 팀장', '중간보스: 야근 과장', '중간보스: 클레임 부장', '중간보스: 본사 이사'];
             this.enemies.push(new Enemy(x, y, this, bossTypes[(this.stage - 1) % bossTypes.length]));
-            window.gameAudio.boss();
+            window.gameAudio.bossAppear();
             this.messages.push({ text: '중간보스 출현!!', x: this.player.x, y: this.player.y - 70, time: 2.2, color: '#ff7a67' });
         }
     }
@@ -199,6 +212,7 @@ class Game {
         this.player.update(dt, this.input);
         this.novaCooldown = Math.max(0, this.novaCooldown - dt);
         this.projectiles.forEach(p => p.update(dt));
+        this.enemyProjectiles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
         this.fireZones.forEach(zone => {
             zone.time -= dt;
             zone.damageTimer -= dt;
@@ -249,6 +263,12 @@ class Game {
                 this.player.takeDamage(e.type.startsWith('중간보스') ? 25 + this.stage * 2 : 10);
             }
         });
+        this.enemyProjectiles.forEach(p => {
+            if (p.active && Utils.circleIntersect(p.x, p.y, p.radius, this.player.x, this.player.y, this.player.radius)) {
+                this.player.takeDamage(Math.ceil(this.player.maxHp * 0.2)); p.active = false;
+                this.messages.push({ text: '보스 처방전 피격!', x: this.player.x, y: this.player.y - 58, time: 1.2, color: '#ff8b78' });
+            }
+        });
 
         if (this.player.hp <= 0) {
             this.isGameOver = true;
@@ -256,6 +276,7 @@ class Game {
 
         // 오브젝트 정리
         this.projectiles = this.projectiles.filter(p => p.active && p.x >= -50 && p.y >= -50 && p.x <= this.map.width + 50 && p.y <= this.map.height + 50);
+        this.enemyProjectiles = this.enemyProjectiles.filter(p => p.active && p.life > 0);
         this.enemies = this.enemies.filter(e => e.active);
         this.staff = this.staff.filter(s => s.active);
 
@@ -286,6 +307,7 @@ class Game {
         this.drops.forEach(drop => drawDrop(this.ctx, drop, this.cameraX, this.cameraY));
         this.staff.forEach(s => s.draw(this.ctx, this.cameraX, this.cameraY));
         this.projectiles.forEach(p => p.draw(this.ctx, this.cameraX, this.cameraY));
+        this.enemyProjectiles.forEach(p => { const x = p.x - this.cameraX, y = p.y - this.cameraY; this.ctx.save(); this.ctx.fillStyle = '#ff5f55'; this.ctx.beginPath(); this.ctx.arc(x, y, p.radius, 0, Math.PI * 2); this.ctx.fill(); this.ctx.fillStyle = '#fff'; this.ctx.font = 'bold 11px sans-serif'; this.ctx.textAlign = 'center'; this.ctx.fillText('!', x, y + 4); this.ctx.restore(); });
         this.player.draw(this.ctx, this.cameraX, this.cameraY);
         this.messages.forEach(message => drawMessage(this.ctx, message, this.cameraX, this.cameraY));
     }

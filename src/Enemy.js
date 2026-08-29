@@ -10,6 +10,7 @@ class Enemy {
         this.facingAngle = 0;
         this.slowTimer = 0;
         this.summonTimer = 4;
+        this.rangedTimer = 3.5;
         this.walkTimer = Math.random();
         this.walkFrame = 0;
         this.facingRow = 0;
@@ -22,7 +23,7 @@ class Enemy {
             this.maxHp = this.hp;
             this.expYield = 220 + game.stage * 30;
             this.color = ['#d9534f', '#b24cff', '#ff8a2b', '#4e80ff'][bossIndex];
-            this.taunt = ['민원은 내가 접수한다!', '오늘도 야근 확정이다!', '클레임은 끝나지 않아!', '본사 방침이다!'][bossIndex];
+            this.taunt = ['오늘도 야근 확정이다!', '오늘도 야근 확정이다!', '클레임은 끝나지 않아!', '본사 방침이다!'][bossIndex];
         } else if (type === "의사") {
             this.speed = 120 + Math.random() * 20; // 진상보다 빠름
             this.radius = 14;
@@ -50,26 +51,25 @@ class Enemy {
         const speed = this.slowTimer > 0 ? this.speed * 0.4 : this.speed;
         this.x += Math.cos(ang) * speed * dt;
         this.y += Math.sin(ang) * speed * dt;
-        // 대각선 경계에서 목표 위치가 미세하게 흔들려 좌우 이미지가 번갈아
-        // 바뀌지 않도록, 한 축이 충분히 우세할 때만 방향을 갱신합니다.
-        const horizontal = Math.abs(Math.cos(ang));
-        const vertical = Math.abs(Math.sin(ang));
-        if (horizontal > vertical * 1.18) {
-            // 여자 진상 시트는 좌·우 행의 순서가 다른 적 시트와 반대입니다.
-            const leftRow = this.type === '여자 진상' ? 2 : 1;
-            const rightRow = this.type === '여자 진상' ? 1 : 2;
-            this.facingRow = Math.cos(ang) < 0 ? leftRow : rightRow;
-        }
-        else if (vertical > horizontal * 1.18) this.facingRow = Math.sin(ang) < 0 ? 3 : 0;
+        this.facingRow = Utils.directionRow(Math.cos(ang), Math.sin(ang), this.facingRow);
         this.walkTimer += dt;
-        this.walkFrame = [1, 2, 3, 2][Math.floor(this.walkTimer / 0.12) % 4];
+        this.walkFrame = Utils.walkFrame(this.walkTimer, 0.12);
         if (this.type.startsWith('중간보스')) {
             this.summonTimer -= dt;
             if (this.summonTimer <= 0 && this.game.enemies.length < 12) {
                 const offset = Math.random() * Math.PI * 2;
-                this.game.enemies.push(new Enemy(this.x + Math.cos(offset) * 65, this.y + Math.sin(offset) * 65, this.game, '진상'));
+                this.game.enemies.push(new Enemy(this.x + Math.cos(offset) * 65, this.y + Math.sin(offset) * 65, this.game, '보스 호출몹'));
                 this.summonTimer = 4;
                 this.game.messages.push({ text: '중간보스: 진상 호출!', x: this.x, y: this.y - 55, time: 1.2, color: '#ed8cff' });
+                window.gameAudio.summon();
+            }
+            this.rangedTimer -= dt;
+            if (this.rangedTimer <= 0) {
+                this.game.spawnEnemyProjectile(this);
+                window.gameAudio.bossShot();
+                const lines = ['이힉~ 여긴 너무 비싸요. 다른 약국 갈래요.', '단골인데 드링크 한 병도 안주나?', '병원 문닫았는데 약 하루치만 미리 줘봐.', '비아그라 그냥 안팔아? 다른약국은 팔던데..'];
+                this.game.messages.push({ text: lines[Math.floor(Math.random() * lines.length)], x: this.x, y: this.y - 72, time: 2.4, color: '#ffddb0' });
+                this.rangedTimer = 4.2;
             }
         }
     }
@@ -82,7 +82,8 @@ class Enemy {
             '남자 진상': this.game.maleEnemyWalkSprite,
             '여자 진상': this.game.femaleEnemyWalkSprite,
             '할아버지 진상': this.game.grandfatherEnemyWalkSprite,
-            '할머니 진상': this.game.grandmotherEnemyWalkSprite
+            '할머니 진상': this.game.grandmotherEnemyWalkSprite,
+            '보스 호출몹': this.game.bossMinionWalkSprite
         }[this.type];
         if (walkSprite && walkSprite.complete && walkSprite.naturalWidth > 0) {
             const cell = walkSprite.naturalWidth / 4;
@@ -134,20 +135,22 @@ class Enemy {
         ctx.fillStyle = "#00ff00";
         ctx.fillRect(barX, barY, barWidth * (Math.max(0, this.hp) / this.maxHp), barHeight);
 
-        // 약사를 긁는 짧은 도발 대사
-        ctx.font = "bold 12px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-        ctx.strokeText(this.taunt, this.x - cameraX, barY - 7);
-        ctx.fillStyle = "#fff3a3";
-        ctx.fillText(this.taunt, this.x - cameraX, barY - 7);
+        // 중간보스의 대사는 원거리 공격 시 메시지로만 표시합니다.
+        if (!this.type.startsWith('중간보스')) {
+            ctx.font = "bold 12px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.strokeText(this.taunt, this.x - cameraX, barY - 7);
+            ctx.fillStyle = "#fff3a3";
+            ctx.fillText(this.taunt, this.x - cameraX, barY - 7);
+        }
     }
 
     takeDamage(amount) {
         this.hp -= amount;
-        window.gameAudio.hit();
+        window.gameAudio.enemyHit();
         if (this.hp <= 0 && this.active) {
             this.active = false;
             this.game.addExp(this.expYield); // 적 종류에 따른 경험치 획득

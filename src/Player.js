@@ -51,11 +51,10 @@ class Player {
         this.y += dy * this.speed * dt;
         this.isMoving = dx !== 0 || dy !== 0;
         if (this.isMoving) {
-            if (Math.abs(dx) > Math.abs(dy)) this.facingRow = dx < 0 ? 1 : 2;
-            else this.facingRow = dy < 0 ? 3 : 0;
+            this.facingRow = Utils.directionRow(dx, dy, this.facingRow);
             this.walkTimer += dt;
             if (this.walkTimer >= 0.105) {
-                this.walkFrame = [1, 2, 3, 2][Math.floor(this.walkTimer / 0.105) % 4];
+                this.walkFrame = Utils.walkFrame(this.walkTimer, 0.105);
             }
         } else {
             this.walkTimer = 0;
@@ -94,7 +93,6 @@ class Player {
                 this.facingAngle = Utils.angle(this.x, this.y, tx, ty);
                 this.game.spawnProjectile(this.x, this.y, tx, ty);
                 window.gameAudio.shoot();
-                window.gameAudio.shoot();
                 this.fireCooldown = this.fireRate;
             }
         }
@@ -102,7 +100,12 @@ class Player {
 
     takeDamage(amount) {
         if (this.invulnerableTimer <= 0) {
-            if (this.shieldTimer <= 0) this.hp -= amount;
+            if (this.shieldTimer <= 0) {
+                this.hp -= amount;
+                window.gameAudio.playerHit();
+            } else {
+                window.gameAudio.shieldBlock();
+            }
             this.invulnerableTimer = 1.0; // 1초 무적 시간
         }
     }
@@ -113,7 +116,7 @@ class Player {
         }
 
         if (this.game.playerSprite.complete && this.game.playerSprite.naturalWidth > 0) {
-            if (this.profile.id === 'seoyeon') {
+            if (this.profile.id === 'seoyeon' && !this.game.usesWalkSprite) {
                 const size = 108;
                 ctx.save();
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'; ctx.beginPath();
