@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>약사 생존기 - Phase 1</title>
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
 
 <body>
@@ -35,7 +35,7 @@
         <div id="hp-bar"></div>
         <div id="level-bar"></div>
         <div id="skill-bar"></div>
-        <div id="investment-bar"></div>
+        <div id="event-status-bar"></div>
     </div>
     <div id="game-over"
         style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); z-index:100; color:red; font-size:48px; font-weight:bold; background:rgba(0,0,0,0.8); padding:50px; text-align:center; border: 4px solid red; border-radius: 10px;">
@@ -78,10 +78,10 @@
     </div>
     <div id="event-modal" role="dialog" aria-modal="true" aria-labelledby="event-title">
         <div id="event-panel">
-            <div id="event-icon">📉</div><p class="eyebrow">SPECIAL EVENT</p>
+            <div class="golden-key-label">GOLDEN EVENT</div>
+            <div id="event-icon">🔑</div>
             <h1 id="event-title">경제 이벤트</h1>
             <p id="event-description"></p>
-            <div id="event-choices"></div>
             <div id="event-result"></div>
             <button id="event-continue" class="primary-button">상점으로 이동</button>
         </div>
@@ -125,8 +125,8 @@
     <script src="src/Audio.js?v=2"></script>
     <script src="src/Player.js"></script>
     <script src="src/Enemy.js"></script>
-    <script src="src/Game.js?v=4"></script>
-    <script src="main.js?v=5"></script>
+    <script src="src/Game.js?v=6"></script>
+    <script src="main.js?v=6"></script>
 </body>
 
 </html>
