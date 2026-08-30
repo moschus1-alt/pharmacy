@@ -56,21 +56,37 @@ window.onload = () => {
     const eventChoices = document.getElementById('event-choices');
     const eventResult = document.getElementById('event-result');
     const eventContinue = document.getElementById('event-continue');
+    const exitConfirmModal = document.getElementById('exit-confirm-modal');
+    const exitCancel = document.getElementById('exit-cancel');
+    const exitGame = document.getElementById('exit-game');
+    const touchPause = document.getElementById('touch-pause');
     let purchaseAnimationTimer;
     let eventStage = 0;
     let pauseMenuOpen = false;
     let gameOverSoundPlayed = false;
+    let backGuardActive = false;
+    let pausedBeforeExit = false;
+
+    const isBlockingModalOpen = () => (
+        shopModal.style.display === 'block' ||
+        eventModal.style.display === 'grid' ||
+        endingModal.style.display === 'grid' ||
+        purchaseAnimation.classList.contains('active') ||
+        document.getElementById('upgrade-modal').style.display === 'block'
+    );
 
     const setPauseMenu = (open) => {
         if (!game) return;
+        if (open && isBlockingModalOpen()) return;
         pauseMenuOpen = open;
         game.isPaused = open;
         window.gameAudio.setPaused(open);
         pauseModal.style.display = open ? 'block' : 'none';
+        touchPause.textContent = open ? '▶' : 'Ⅱ';
     };
 
     window.addEventListener('keydown', (event) => {
-        if (!game || event.key !== 'Escape' || game.isGameOver || upgradeModal.style.display === 'block') return;
+        if (!game || event.key !== 'Escape' || game.isGameOver || isBlockingModalOpen()) return;
         event.preventDefault();
         setPauseMenu(!pauseMenuOpen);
     });
@@ -80,6 +96,30 @@ window.onload = () => {
         game.isGameOver = true;
         pauseModal.style.display = 'none';
     };
+
+    const showExitConfirmation = () => {
+        if (!game || game.isGameOver || game.won) return;
+        pausedBeforeExit = game.isPaused;
+        game.isPaused = true;
+        window.gameAudio.setPaused(true);
+        exitConfirmModal.style.display = 'grid';
+    };
+
+    exitCancel.onclick = () => {
+        exitConfirmModal.style.display = 'none';
+        game.isPaused = pausedBeforeExit;
+        window.gameAudio.setPaused(pausedBeforeExit);
+    };
+    exitGame.onclick = () => {
+        backGuardActive = false;
+        location.reload();
+    };
+
+    window.addEventListener('popstate', () => {
+        if (!backGuardActive || !game || game.isGameOver || game.won) return;
+        history.pushState({ pharmacyGame: true }, '', location.href);
+        showExitConfirmation();
+    });
 
     const renderShop = (notice = '') => {
         if (!game) return;
@@ -184,6 +224,11 @@ window.onload = () => {
         event.preventDefault();
         if (game) game.fireEmergencyPrescription();
     });
+    touchPause.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        if (!game || game.isGameOver || isBlockingModalOpen()) return;
+        setPauseMenu(!pauseMenuOpen);
+    });
 
     // 업그레이드 UI 관련
     const upgradeModal = document.getElementById('upgrade-modal');
@@ -281,6 +326,10 @@ window.onload = () => {
             game.baseDamage = 250;
             game.novaCooldown = 0;
             game.nextEventStage = 1;
+        }
+        if (!backGuardActive) {
+            history.pushState({ pharmacyGame: true }, '', location.href);
+            backGuardActive = true;
         }
         document.getElementById('start-screen').style.display = 'none';
         window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 시럽투척이 충전되면 Q로 사용하세요!`);
