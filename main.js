@@ -65,7 +65,6 @@ window.onload = () => {
     const eventIcon = document.getElementById('event-icon');
     const eventTitle = document.getElementById('event-title');
     const eventDescription = document.getElementById('event-description');
-    const eventChoices = document.getElementById('event-choices');
     const eventResult = document.getElementById('event-result');
     const eventContinue = document.getElementById('event-continue');
     const exitConfirmModal = document.getElementById('exit-confirm-modal');
@@ -135,7 +134,7 @@ window.onload = () => {
 
     const renderShop = (notice = '') => {
         if (!game) return;
-        shopCash.textContent = `현금 ${game.cash.toLocaleString()}원 · 주식 ${game.stockPortfolio.toLocaleString()}원`;
+        shopCash.textContent = `현금 ${game.cash.toLocaleString()}원`;
         if (notice) shopSummary.textContent = notice;
         shopContainer.innerHTML = '';
         const categories = [...new Set(game.getShopItems().map(item => item.category))];
@@ -174,30 +173,23 @@ window.onload = () => {
         eventIcon.textContent = event.icon;
         eventTitle.textContent = event.title;
         eventDescription.textContent = event.description;
-        eventResult.textContent = '';
-        eventResult.style.display = 'none';
+        eventResult.innerHTML = `<strong>${event.impact}</strong><span>${event.result}</span>`;
+        eventResult.style.display = 'grid';
         eventContinue.style.display = 'none';
-        eventChoices.innerHTML = '';
-        event.choices.forEach(choice => {
-            const button = document.createElement('button');
-            button.className = 'event-choice';
-            button.disabled = !!choice.disabled;
-            button.innerHTML = `<strong>${choice.title}</strong><span>${choice.disabled ? '현재 자금 또는 조건 부족' : choice.desc}</span>`;
-            button.onclick = () => {
-                const result = choice.apply();
-                [...eventChoices.children].forEach(item => { item.disabled = true; });
-                eventResult.textContent = result;
-                eventResult.style.display = 'block';
-                eventContinue.style.display = 'block';
-                window.gameAudio.pickup('upgrade');
-            };
-            eventChoices.appendChild(button);
-        });
+        eventModal.dataset.tone = event.tone || 'neutral';
         eventModal.style.display = 'grid';
+        eventModal.classList.remove('event-enter');
+        void eventModal.offsetWidth;
+        eventModal.classList.add('event-enter');
+        window.gameAudio.pickup(event.tone === 'good' ? 'upgrade' : 'potion');
+        window.setTimeout(() => {
+            if (eventModal.style.display === 'grid') eventContinue.style.display = 'block';
+        }, 900);
     };
 
     eventContinue.onclick = () => {
         eventModal.style.display = 'none';
+        eventModal.classList.remove('event-enter');
         window.openStageShop(game, eventStage);
     };
 
@@ -313,9 +305,9 @@ window.onload = () => {
         skillUi.innerText = mobile
             ? (game.novaCooldown > 0 ? `Q 시럽투척 ${game.novaCooldown.toFixed(1)}초` : 'Q 시럽투척 준비 완료')
             : (game.novaCooldown > 0 ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초` : `시럽투척: 사용 가능 (Q)`);
-        document.getElementById('investment-bar').innerText = mobile
-            ? `주식 ${game.stockPortfolio.toLocaleString()} · 수입 ×${game.getRevenueMultiplier().toFixed(2)}`
-            : `주식 ${game.stockPortfolio.toLocaleString()}원 · 수입 배율 ×${game.getRevenueMultiplier().toFixed(2)}`;
+        document.getElementById('event-status-bar').innerText = mobile
+            ? `다음 이벤트 ${game.nextEventStage} · 집값 ×${game.homePriceMultiplier.toFixed(2)}`
+            : `다음 황금 이벤트 STAGE ${game.nextEventStage} · 원베일리 시세 ×${game.homePriceMultiplier.toFixed(2)}`;
         touchSkill.classList.toggle('ready', game.novaCooldown <= 0);
         touchSkill.querySelector('span').textContent = game.novaCooldown > 0 ? `${game.novaCooldown.toFixed(1)}초` : '시럽투척';
 
