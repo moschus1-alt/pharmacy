@@ -49,7 +49,15 @@ window.onload = () => {
     const shopContinue = document.getElementById('shop-continue');
     const endingModal = document.getElementById('ending-modal');
     const purchaseAnimation = document.getElementById('purchase-animation');
+    const eventModal = document.getElementById('event-modal');
+    const eventIcon = document.getElementById('event-icon');
+    const eventTitle = document.getElementById('event-title');
+    const eventDescription = document.getElementById('event-description');
+    const eventChoices = document.getElementById('event-choices');
+    const eventResult = document.getElementById('event-result');
+    const eventContinue = document.getElementById('event-continue');
     let purchaseAnimationTimer;
+    let eventStage = 0;
     let pauseMenuOpen = false;
     let gameOverSoundPlayed = false;
 
@@ -75,7 +83,7 @@ window.onload = () => {
 
     const renderShop = (notice = '') => {
         if (!game) return;
-        shopCash.textContent = `보유 현금 ${game.cash.toLocaleString()}원`;
+        shopCash.textContent = `현금 ${game.cash.toLocaleString()}원 · 주식 ${game.stockPortfolio.toLocaleString()}원`;
         if (notice) shopSummary.textContent = notice;
         shopContainer.innerHTML = '';
         const categories = [...new Set(game.getShopItems().map(item => item.category))];
@@ -108,6 +116,39 @@ window.onload = () => {
         renderShop();
     };
 
+    window.openStageEvent = (activeGame, clearedStage, event) => {
+        if (activeGame !== game) return;
+        eventStage = clearedStage;
+        eventIcon.textContent = event.icon;
+        eventTitle.textContent = event.title;
+        eventDescription.textContent = event.description;
+        eventResult.textContent = '';
+        eventResult.style.display = 'none';
+        eventContinue.style.display = 'none';
+        eventChoices.innerHTML = '';
+        event.choices.forEach(choice => {
+            const button = document.createElement('button');
+            button.className = 'event-choice';
+            button.disabled = !!choice.disabled;
+            button.innerHTML = `<strong>${choice.title}</strong><span>${choice.disabled ? '현재 자금 또는 조건 부족' : choice.desc}</span>`;
+            button.onclick = () => {
+                const result = choice.apply();
+                [...eventChoices.children].forEach(item => { item.disabled = true; });
+                eventResult.textContent = result;
+                eventResult.style.display = 'block';
+                eventContinue.style.display = 'block';
+                window.gameAudio.pickup('upgrade');
+            };
+            eventChoices.appendChild(button);
+        });
+        eventModal.style.display = 'grid';
+    };
+
+    eventContinue.onclick = () => {
+        eventModal.style.display = 'none';
+        window.openStageShop(game, eventStage);
+    };
+
     shopContinue.onclick = () => {
         if (!game) return;
         shopModal.style.display = 'none';
@@ -117,7 +158,9 @@ window.onload = () => {
 
     window.showGameEnding = (activeGame) => {
         shopModal.style.display = 'none';
-        endingModal.style.display = 'grid';
+        endingModal.style.setProperty('display', 'grid', 'important');
+        endingModal.style.visibility = 'visible';
+        endingModal.style.opacity = '1';
         document.getElementById('ending-score').textContent = `최종 기록 · STAGE ${activeGame.stage} · ${activeGame.getPharmacyTier().name}`;
     };
     window.showPurchaseAnimation = (type) => {
@@ -125,8 +168,14 @@ window.onload = () => {
         clearTimeout(purchaseAnimationTimer);
         purchaseAnimation.classList.remove('active');
         void purchaseAnimation.offsetWidth;
+        purchaseAnimation.style.setProperty('display', 'grid', 'important');
+        purchaseAnimation.style.visibility = 'visible';
+        purchaseAnimation.style.opacity = '1';
         purchaseAnimation.classList.add('active');
-        purchaseAnimationTimer = setTimeout(() => purchaseAnimation.classList.remove('active'), 2800);
+        purchaseAnimationTimer = setTimeout(() => {
+            purchaseAnimation.classList.remove('active');
+            purchaseAnimation.style.setProperty('display', 'none', 'important');
+        }, 2800);
     };
     document.getElementById('ending-restart').onclick = () => location.reload();
 
@@ -204,6 +253,7 @@ window.onload = () => {
         skillUi.innerText = game.novaCooldown > 0
             ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초`
             : `시럽투척: 사용 가능 (Q)`;
+        document.getElementById('investment-bar').innerText = `주식 ${game.stockPortfolio.toLocaleString()}원 · 수입 배율 ×${game.getRevenueMultiplier().toFixed(2)}`;
         touchSkill.classList.toggle('ready', game.novaCooldown <= 0);
         touchSkill.querySelector('span').textContent = game.novaCooldown > 0 ? `${game.novaCooldown.toFixed(1)}초` : '시럽투척';
 
@@ -230,6 +280,7 @@ window.onload = () => {
             game.stageTarget = 1;
             game.baseDamage = 250;
             game.novaCooldown = 0;
+            game.nextEventStage = 1;
         }
         document.getElementById('start-screen').style.display = 'none';
         window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 시럽투척이 충전되면 Q로 사용하세요!`);
