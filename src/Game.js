@@ -37,6 +37,8 @@ class Game {
         this.stockPortfolio = 0;
         this.goodwillDiscount = 0;
         this.revenueEventBonus = 0;
+        this.homePriceMultiplier = 1;
+        this.homePriceLocked = false;
         this.clinicClosedUntilStage = 0;
         this.nextEventStage = 2 + Math.floor(Math.random() * 2);
         this.lastEventId = '';
@@ -236,7 +238,7 @@ class Game {
             { id: 'pharmacist-training', category: '연수교육', name: '근무약사 연수교육', price: 220000 * (this.pharmacistTraining + 1), desc: `공격력·공격속도 향상 · 교육 ${this.pharmacistTraining}/5`, soldOut: this.pharmacistTraining >= 5, locked: this.pharmacistCount === 0, lockText: '근무약사를 먼저 채용하세요' },
             ...machines.map(machine => ({ ...machine, category: '자동조제', soldOut: this.purchasedMachines.has(machine.id), locked: this.pharmacyLevel < machine.requiredLevel, lockText: `${Game.PHARMACY_TIERS[machine.requiredLevel - 1].name} 필요` })),
             { id: 'porsche', category: '인생 목표', name: '포르쉐', price: 1200000, desc: '원베일리 입성에 필요한 드림카', soldOut: this.hasPorsche },
-            { id: 'one-bailey', category: '인생 목표', name: '반포 원베일리 한강뷰', price: 12000000, desc: '최종 엔딩을 해금합니다.', locked: !this.hasPorsche, lockText: '포르쉐를 먼저 구매하세요' }
+            { id: 'one-bailey', category: '인생 목표', name: '반포 원베일리 한강뷰', price: Math.round(12000000 * this.homePriceMultiplier), desc: `최종 엔딩 해금 · 아파트 시세 ${this.homePriceLocked ? '고정' : `×${this.homePriceMultiplier.toFixed(2)}`}`, locked: !this.hasPorsche, lockText: '포르쉐를 먼저 구매하세요' }
         ];
     }
 
@@ -311,21 +313,21 @@ class Game {
                 ]
             },
             {
-                id: 'realestate-crash', icon: '🏚️', title: '상가 부동산 폭락',
-                description: '공실이 늘면서 다음 약국 자리의 권리금 협상력이 커졌습니다.',
+                id: 'apartment-crash', icon: '🏘️', title: '서울 아파트 가격 하락',
+                description: `주택시장이 얼어붙었습니다. 반포 원베일리 목표가격은 현재 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%입니다.`,
                 choices: [
-                    { title: '현장조사 10만원', desc: '다음 권리금을 20% 낮춥니다.', disabled: this.cash < 100000, apply: () => { this.cash -= 100000; this.goodwillDiscount = Math.max(this.goodwillDiscount, .2); return '급매 약국을 찾아 다음 권리금 20% 할인을 확보했습니다.'; } },
-                    { title: '리츠 저가매수 15만원', desc: '투자 포트폴리오에 18만원을 담습니다.', disabled: this.cash < 150000, apply: () => { this.cash -= 150000; this.stockPortfolio += 180000; return '상가 리츠를 저가에 매수했습니다.'; } },
-                    { title: '현금 보유', desc: '기회를 기다립니다.', apply: () => '현금을 지키며 더 좋은 자리를 기다립니다.' }
+                    { title: '급매 조사 10만원', desc: '원베일리 목표가격을 12% 낮춥니다.', disabled: this.cash < 100000 || this.homePriceLocked, apply: () => { this.cash -= 100000; this.homePriceMultiplier = Math.max(.7, this.homePriceMultiplier - .12); return `급매 기회를 찾아 목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%가 됐습니다.`; } },
+                    { title: '주택 ETF 저가매수 15만원', desc: '주식 포트폴리오에 18만원을 추가합니다.', disabled: this.cash < 150000, apply: () => { this.cash -= 150000; this.stockPortfolio += 180000; if (!this.homePriceLocked) this.homePriceMultiplier = Math.max(.7, this.homePriceMultiplier - .06); return '주택 관련 ETF를 저가에 매수했습니다.'; } },
+                    { title: '현금 보유', desc: '집값이 5% 더 내려갈 때까지 기다립니다.', apply: () => { if (!this.homePriceLocked) this.homePriceMultiplier = Math.max(.7, this.homePriceMultiplier - .05); return this.homePriceLocked ? '이미 확보한 가격을 유지했습니다.' : `목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%로 내려갔습니다.`; } }
                 ]
             },
             {
-                id: 'realestate-rise', icon: '🏙️', title: '상가 부동산 급등',
-                description: '임대료와 권리금이 동시에 오르며 약국 운영비가 압박받고 있습니다.',
+                id: 'apartment-rise', icon: '🏙️', title: '서울 아파트 가격 급등',
+                description: `한강변 아파트 신고가가 이어집니다. 원베일리 목표가격은 현재 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%입니다.`,
                 choices: [
-                    { title: '장기계약 12만원', desc: '수입 배율을 영구적으로 0.12 높입니다.', disabled: this.cash < 120000, apply: () => { this.cash -= 120000; this.revenueEventBonus += .12; return '임대료를 고정하고 안정적인 영업 기반을 만들었습니다.'; } },
-                    { title: '가격 조정', desc: '수입 배율 +0.05, 다음 스테이지 목표 +2', apply: () => { this.revenueEventBonus += .05; this.stageTarget += 2; return '매출은 늘지만 손님도 더 몰려옵니다.'; } },
-                    { title: '인상분 납부', desc: '최대 8만원을 지출합니다.', apply: () => `${pay(80000).toLocaleString()}원의 임대료 인상분을 납부했습니다.` }
+                    { title: '매수가 고정 30만원', desc: '현재 원베일리 목표가격을 이후에도 고정합니다.', disabled: this.cash < 300000 || this.homePriceLocked, apply: () => { this.cash -= 300000; this.homePriceLocked = true; return `계약 기회를 확보해 목표가격을 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%로 고정했습니다.`; } },
+                    { title: '건설주 투자 15만원', desc: '주식 포트폴리오 +19만원, 집값은 12% 상승', disabled: this.cash < 150000, apply: () => { this.cash -= 150000; this.stockPortfolio += 190000; if (!this.homePriceLocked) this.homePriceMultiplier += .12; return '건설주 수익을 노리지만 원베일리 목표가격도 상승했습니다.'; } },
+                    { title: '추격하지 않기', desc: '현금을 지키지만 집값이 12% 상승합니다.', apply: () => { if (!this.homePriceLocked) this.homePriceMultiplier += .12; return this.homePriceLocked ? '고정해 둔 매수가를 지켰습니다.' : `목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%로 올랐습니다.`; } }
                 ]
             },
             {
