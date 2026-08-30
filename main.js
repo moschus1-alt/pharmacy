@@ -8,9 +8,15 @@ window.onload = () => {
 
     function resize() {
         const viewport = window.visualViewport;
-        canvas.width = Math.round(viewport?.width || window.innerWidth);
-        canvas.height = Math.round(viewport?.height || window.innerHeight);
+        const width = Math.round(viewport?.width || window.innerWidth);
+        const height = Math.round(viewport?.height || window.innerHeight);
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
     }
+
+    const isMobileLayout = () => window.innerWidth <= 820 || window.matchMedia('(pointer: coarse)').matches;
 
     window.addEventListener('resize', resize);
     window.visualViewport?.addEventListener('resize', resize);
@@ -25,12 +31,18 @@ window.onload = () => {
     const staffDialogText = document.getElementById('staff-dialog-text');
     let staffDialogTimer;
     const soundToggle = document.getElementById('sound-toggle');
+    const refreshSoundLabel = () => {
+        const muted = !!window.gameAudio.muted;
+        soundToggle.textContent = isMobileLayout() ? (muted ? '🔇' : '🔊') : (muted ? '🔇 음향 꺼짐' : '🔊 음향 켜짐');
+        soundToggle.setAttribute('aria-label', muted ? '음향 켜기' : '음향 끄기');
+    };
     soundToggle.addEventListener('click', async () => {
         const muted = await window.gameAudio.toggleMute();
         soundToggle.dataset.audioState = window.gameAudio.ctx?.state || 'unavailable';
         soundToggle.setAttribute('aria-pressed', String(muted));
-        soundToggle.textContent = muted ? '🔇 음향 꺼짐' : '🔊 음향 켜짐';
+        refreshSoundLabel();
     });
+    refreshSoundLabel();
 
     window.showStaffDialog = (text) => {
         clearTimeout(staffDialogTimer);
@@ -290,15 +302,20 @@ window.onload = () => {
 
         // UI 업데이트
         const tier = game.getPharmacyTier();
-        document.getElementById('character-bar').innerText = `${selectedProfile.name} · ${tier.name} · ${game.cash.toLocaleString()}원 · 직원 ${game.employeeCount}/${tier.employeeLimit} · 약사 ${game.pharmacistCount}/${tier.pharmacistLimit}`;
+        const mobile = isMobileLayout();
+        document.getElementById('character-bar').innerText = mobile
+            ? `${selectedProfile.name} · ${tier.name}\n💰${game.cash.toLocaleString()} · 직원 ${game.employeeCount}/${tier.employeeLimit} · 약사 ${game.pharmacistCount}/${tier.pharmacistLimit}`
+            : `${selectedProfile.name} · ${tier.name} · ${game.cash.toLocaleString()}원 · 직원 ${game.employeeCount}/${tier.employeeLimit} · 약사 ${game.pharmacistCount}/${tier.pharmacistLimit}`;
         hpUi.innerText = `HP  ${Math.ceil(Math.max(0, game.player.hp))} / ${game.player.maxHp}`;
-        levelUi.innerText = game.bossActive
-            ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}`
-            : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.expToNextLevel()})`;
-        skillUi.innerText = game.novaCooldown > 0
-            ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초`
-            : `시럽투척: 사용 가능 (Q)`;
-        document.getElementById('investment-bar').innerText = `주식 ${game.stockPortfolio.toLocaleString()}원 · 수입 배율 ×${game.getRevenueMultiplier().toFixed(2)}`;
+        levelUi.innerText = mobile
+            ? (game.bossActive ? `STAGE ${game.stage} · 보스전 · Lv ${game.level}` : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} · Lv ${game.level} · EXP ${game.exp}/${game.expToNextLevel()}`)
+            : (game.bossActive ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}` : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.expToNextLevel()})`);
+        skillUi.innerText = mobile
+            ? (game.novaCooldown > 0 ? `Q 시럽투척 ${game.novaCooldown.toFixed(1)}초` : 'Q 시럽투척 준비 완료')
+            : (game.novaCooldown > 0 ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초` : `시럽투척: 사용 가능 (Q)`);
+        document.getElementById('investment-bar').innerText = mobile
+            ? `주식 ${game.stockPortfolio.toLocaleString()} · 수입 ×${game.getRevenueMultiplier().toFixed(2)}`
+            : `주식 ${game.stockPortfolio.toLocaleString()}원 · 수입 배율 ×${game.getRevenueMultiplier().toFixed(2)}`;
         touchSkill.classList.toggle('ready', game.novaCooldown <= 0);
         touchSkill.querySelector('span').textContent = game.novaCooldown > 0 ? `${game.novaCooldown.toFixed(1)}초` : '시럽투척';
 
