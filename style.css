@@ -71,6 +71,7 @@ body, html {
 #hp-bar { color: #fff; border-left: 5px solid #ff6f70 !important; }
 #level-bar { color: #ffe19a; }
 #skill-bar { color: #b8d8ff; }
+#investment-bar { color: #baffc8; }
 
 .screen { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 22px; background: radial-gradient(circle at 50% 15%, rgba(59, 148, 153, .26), transparent 35%), rgba(3, 10, 21, .91); }
 .start-panel { width: min(780px, 100%); padding: clamp(26px, 6vw, 52px); text-align: center; border: 1px solid rgba(129,245,223,.5); border-radius: 24px; background: linear-gradient(145deg, rgba(17,43,65,.98), rgba(7,17,32,.98)); box-shadow: 0 24px 80px rgba(0,0,0,.55); }
@@ -105,6 +106,19 @@ body, html {
     background: rgba(2, 9, 18, 0.88);
     backdrop-filter: blur(10px);
 }
+
+#event-modal { display: none; position: fixed; inset: 0; z-index: 95; place-items: center; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: radial-gradient(circle at 50% 20%, rgba(64,119,143,.35), transparent 42%), rgba(2,8,18,.92); backdrop-filter: blur(10px); }
+#event-panel { width: min(680px, 100%); max-height: 94dvh; overflow-y: auto; padding: clamp(24px, 5vw, 42px); border: 1px solid rgba(255,224,138,.52); border-radius: 22px; background: linear-gradient(145deg, #162c43, #081321); box-shadow: 0 28px 90px rgba(0,0,0,.65); text-align: center; touch-action: pan-y; }
+#event-icon { font-size: clamp(52px, 13vw, 82px); filter: drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
+#event-panel h1 { margin: 7px 0 10px; font-size: clamp(28px, 7vw, 44px); }
+#event-description { color: #c7d5df; line-height: 1.6; }
+#event-choices { display: grid; gap: 10px; margin-top: 22px; }
+.event-choice { display: grid; gap: 6px; width: 100%; padding: 15px 17px; border: 1px solid #547589; border-radius: 12px; color: white; background: #10283d; text-align: left; cursor: pointer; }
+.event-choice:hover:not(:disabled) { border-color: #81f5df; background: #174655; transform: translateY(-2px); }
+.event-choice strong { color: #ffe08a; font-size: 17px; }.event-choice span { color: #b9c9d5; font-size: 13px; }
+.event-choice:disabled { opacity: .42; cursor: not-allowed; }
+#event-result { display: none; margin: 18px 0; padding: 15px; border: 1px solid rgba(129,245,223,.4); border-radius: 11px; color: #dffff8; background: rgba(27,82,83,.38); font-weight: 800; line-height: 1.5; }
+#event-continue { display: none; width: 100%; }
 
 #shop-panel {
     width: min(980px, 100%);
