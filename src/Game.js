@@ -34,12 +34,8 @@ class Game {
         this.pharmacistCount = 0;
         this.employeeTraining = 0;
         this.pharmacistTraining = 0;
-        this.stockPortfolio = 0;
         this.goodwillDiscount = 0;
-        this.revenueEventBonus = 0;
         this.homePriceMultiplier = 1;
-        this.homePriceLocked = false;
-        this.clinicClosedUntilStage = 0;
         this.nextEventStage = 2 + Math.floor(Math.random() * 2);
         this.lastEventId = '';
 
@@ -231,14 +227,13 @@ class Game {
             { id: 'sipjeondaebo', category: '회복', name: '십전대보탕', price: 11000, desc: 'HP를 전부 회복' },
             { id: 'placenta', category: '회복', name: '인태반', price: 22000, desc: '최대 HP +10, 전부 회복' },
             { id: 'goodwill', category: '약국', name: nextTier ? `권리금 · ${nextTier.name}` : '최고 규모 달성', price: goodwillPrice, desc: nextTier ? `수입 배율 상승 · 직원 ${nextTier.employeeLimit}명 · 근무약사 ${nextTier.pharmacistLimit}명${this.goodwillDiscount ? ` · 할인 ${Math.round(this.goodwillDiscount * 100)}%` : ''}` : '종합병원문전약국 운영 중', soldOut: !nextTier },
-            { id: 'stock-investment', category: '투자', name: '주식 투자', price: 100000, desc: `포트폴리오에 10만원 추가 · 현재 ${this.stockPortfolio.toLocaleString()}원` },
             { id: 'hire-employee', category: '인력', name: '직원 채용', price: 80000 + this.employeeCount * 75000, desc: `수입과 드롭 회수 범위 향상 · ${this.employeeCount}/${tier.employeeLimit}명`, soldOut: this.employeeCount >= tier.employeeLimit },
             { id: 'hire-pharmacist', category: '인력', name: '근무약사 채용', price: 180000 + this.pharmacistCount * 160000, desc: `영구 자동공격 동료 · ${this.pharmacistCount}/${tier.pharmacistLimit}명`, soldOut: this.pharmacistCount >= tier.pharmacistLimit, locked: this.staff.length >= tier.pharmacistLimit && this.pharmacistCount < tier.pharmacistLimit, lockText: '지원 근무약사 퇴근 후 채용 가능' },
             { id: 'employee-training', category: '연수교육', name: '직원 연수교육', price: 120000 * (this.employeeTraining + 1), desc: `수입·회수 능력 향상 · 교육 ${this.employeeTraining}/5`, soldOut: this.employeeTraining >= 5, locked: this.employeeCount === 0, lockText: '직원을 먼저 채용하세요' },
             { id: 'pharmacist-training', category: '연수교육', name: '근무약사 연수교육', price: 220000 * (this.pharmacistTraining + 1), desc: `공격력·공격속도 향상 · 교육 ${this.pharmacistTraining}/5`, soldOut: this.pharmacistTraining >= 5, locked: this.pharmacistCount === 0, lockText: '근무약사를 먼저 채용하세요' },
             ...machines.map(machine => ({ ...machine, category: '자동조제', soldOut: this.purchasedMachines.has(machine.id), locked: this.pharmacyLevel < machine.requiredLevel, lockText: `${Game.PHARMACY_TIERS[machine.requiredLevel - 1].name} 필요` })),
             { id: 'porsche', category: '인생 목표', name: '포르쉐', price: 1200000, desc: '원베일리 입성에 필요한 드림카', soldOut: this.hasPorsche },
-            { id: 'one-bailey', category: '인생 목표', name: '반포 원베일리 한강뷰', price: Math.round(12000000 * this.homePriceMultiplier), desc: `최종 엔딩 해금 · 아파트 시세 ${this.homePriceLocked ? '고정' : `×${this.homePriceMultiplier.toFixed(2)}`}`, locked: !this.hasPorsche, lockText: '포르쉐를 먼저 구매하세요' }
+            { id: 'one-bailey', category: '인생 목표', name: '반포 원베일리 한강뷰', price: Math.round(12000000 * this.homePriceMultiplier), desc: `최종 엔딩 해금 · 아파트 시세 ×${this.homePriceMultiplier.toFixed(2)}`, locked: !this.hasPorsche, lockText: '포르쉐를 먼저 구매하세요' }
         ];
     }
 
@@ -248,8 +243,7 @@ class Game {
 
     getRevenueMultiplier() {
         const staffBonus = this.employeeCount * (0.07 + this.employeeTraining * 0.015);
-        const clinicPenalty = this.stage <= this.clinicClosedUntilStage ? 0.15 : 0;
-        return Math.max(.5, this.getPharmacyTier().revenueMultiplier + staffBonus + this.revenueEventBonus - clinicPenalty);
+        return this.getPharmacyTier().revenueMultiplier + staffBonus;
     }
 
     expToNextLevel() {
@@ -266,7 +260,6 @@ class Game {
         else if (id === 'sipjeondaebo') this.player.hp = this.player.maxHp;
         else if (id === 'placenta') { this.player.maxHp += 10; this.player.hp = this.player.maxHp; }
         else if (id === 'goodwill') { this.pharmacyLevel++; this.baseDamage += 2; this.goodwillDiscount = 0; }
-        else if (id === 'stock-investment') this.stockPortfolio += 100000;
         else if (id === 'hire-employee') this.employeeCount++;
         else if (id === 'hire-pharmacist') {
             this.pharmacistCount++;
@@ -292,76 +285,60 @@ class Game {
     }
 
     createStageEvent(clearedStage) {
-        const pay = (amount) => { const paid = Math.min(this.cash, amount); this.cash -= paid; return paid; };
+        const stageBonus = Math.floor(clearedStage / 3) * 20000;
+        const loseCash = (amount) => { const loss = Math.min(this.cash, amount); this.cash -= loss; return loss; };
         const events = [
             {
-                id: 'stock-crash', icon: '📉', title: '주식시장 폭락',
-                description: `보유 주식 ${this.stockPortfolio.toLocaleString()}원이 급락하고 있습니다. 손절할지, 추가 매수할지 결정해야 합니다.`,
-                choices: [
-                    { title: '물타기 10만원', desc: '추가 매수해 다음 상승을 노립니다.', disabled: this.cash < 100000, apply: () => { this.cash -= 100000; this.stockPortfolio = Math.round(this.stockPortfolio * .65) + 130000; return '공포장에서 추가 매수했습니다. 포트폴리오가 재편되었습니다.'; } },
-                    { title: '손절하기', desc: '현재 가치의 55%를 현금화합니다.', disabled: this.stockPortfolio <= 0, apply: () => { const recovered = Math.round(this.stockPortfolio * .55); this.stockPortfolio = 0; this.cash += recovered; return `${recovered.toLocaleString()}원을 회수하고 시장에서 나왔습니다.`; } },
-                    { title: '버티기', desc: '현금 지출 없이 하락을 견딥니다.', apply: () => { this.stockPortfolio = Math.round(this.stockPortfolio * .65); return `평가액이 ${this.stockPortfolio.toLocaleString()}원으로 감소했습니다.`; } }
-                ]
+                id: 'stock-crash', icon: '📉', tone: 'bad', title: '주식시장 폭락',
+                description: '직원 복지기금으로 산 주식이 급락했습니다.',
+                resolve: () => { const loss = loseCash(150000 + stageBonus); return { impact: `-${loss.toLocaleString()}원`, result: '복지기금 손실을 약국 운영자금으로 메웠습니다.' }; }
             },
             {
-                id: 'stock-rise', icon: '📈', title: '주식시장 급등',
-                description: `보유 주식 ${this.stockPortfolio.toLocaleString()}원이 강세장에 올라탔습니다.`,
-                choices: [
-                    { title: '전량 매도', desc: '평가액의 155%를 현금화합니다.', disabled: this.stockPortfolio <= 0, apply: () => { const proceeds = Math.round(this.stockPortfolio * 1.55); this.stockPortfolio = 0; this.cash += proceeds; return `${proceeds.toLocaleString()}원의 수익을 확정했습니다!`; } },
-                    { title: '계속 보유', desc: '평가액이 30% 상승합니다.', apply: () => { this.stockPortfolio = Math.round(this.stockPortfolio * 1.3); return `평가액이 ${this.stockPortfolio.toLocaleString()}원이 되었습니다.`; } },
-                    { title: '추격매수 15만원', desc: '위험하지만 상승 흐름에 합류합니다.', disabled: this.cash < 150000, apply: () => { this.cash -= 150000; this.stockPortfolio += 180000; return '추격매수에 성공해 포트폴리오가 18만원 늘었습니다.'; } }
-                ]
+                id: 'stock-rise', icon: '📈', tone: 'good', title: '주식시장 급등',
+                description: '잊고 있던 소액 주식계좌에서 뜻밖의 수익이 났습니다.',
+                resolve: () => { const gain = 180000 + stageBonus; this.cash += gain; return { impact: `+${gain.toLocaleString()}원`, result: '수익을 즉시 현금화해 약국 운영자금에 보탰습니다.' }; }
             },
             {
-                id: 'apartment-crash', icon: '🏘️', title: '서울 아파트 가격 하락',
-                description: `주택시장이 얼어붙었습니다. 반포 원베일리 목표가격은 현재 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%입니다.`,
-                choices: [
-                    { title: '급매 조사 10만원', desc: '원베일리 목표가격을 12% 낮춥니다.', disabled: this.cash < 100000 || this.homePriceLocked, apply: () => { this.cash -= 100000; this.homePriceMultiplier = Math.max(.7, this.homePriceMultiplier - .12); return `급매 기회를 찾아 목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%가 됐습니다.`; } },
-                    { title: '주택 ETF 저가매수 15만원', desc: '주식 포트폴리오에 18만원을 추가합니다.', disabled: this.cash < 150000, apply: () => { this.cash -= 150000; this.stockPortfolio += 180000; if (!this.homePriceLocked) this.homePriceMultiplier = Math.max(.7, this.homePriceMultiplier - .06); return '주택 관련 ETF를 저가에 매수했습니다.'; } },
-                    { title: '현금 보유', desc: '집값이 5% 더 내려갈 때까지 기다립니다.', apply: () => { if (!this.homePriceLocked) this.homePriceMultiplier = Math.max(.7, this.homePriceMultiplier - .05); return this.homePriceLocked ? '이미 확보한 가격을 유지했습니다.' : `목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%로 내려갔습니다.`; } }
-                ]
+                id: 'apartment-crash', icon: '🏘️', tone: 'good', title: '서울 아파트 가격 하락',
+                description: '한강변 아파트 급매가 쌓이며 원베일리 목표가격이 내려갑니다.',
+                resolve: () => { this.homePriceMultiplier = Math.max(.7, this.homePriceMultiplier - .1); return { impact: '원베일리 -10%', result: `목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%가 됐습니다.` }; }
             },
             {
-                id: 'apartment-rise', icon: '🏙️', title: '서울 아파트 가격 급등',
-                description: `한강변 아파트 신고가가 이어집니다. 원베일리 목표가격은 현재 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%입니다.`,
-                choices: [
-                    { title: '매수가 고정 30만원', desc: '현재 원베일리 목표가격을 이후에도 고정합니다.', disabled: this.cash < 300000 || this.homePriceLocked, apply: () => { this.cash -= 300000; this.homePriceLocked = true; return `계약 기회를 확보해 목표가격을 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%로 고정했습니다.`; } },
-                    { title: '건설주 투자 15만원', desc: '주식 포트폴리오 +19만원, 집값은 12% 상승', disabled: this.cash < 150000, apply: () => { this.cash -= 150000; this.stockPortfolio += 190000; if (!this.homePriceLocked) this.homePriceMultiplier += .12; return '건설주 수익을 노리지만 원베일리 목표가격도 상승했습니다.'; } },
-                    { title: '추격하지 않기', desc: '현금을 지키지만 집값이 12% 상승합니다.', apply: () => { if (!this.homePriceLocked) this.homePriceMultiplier += .12; return this.homePriceLocked ? '고정해 둔 매수가를 지켰습니다.' : `목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%로 올랐습니다.`; } }
-                ]
+                id: 'apartment-rise', icon: '🏙️', tone: 'bad', title: '서울 아파트 가격 급등',
+                description: '한강변 아파트 신고가가 이어지며 원베일리 입성이 멀어집니다.',
+                resolve: () => { this.homePriceMultiplier += .1; return { impact: '원베일리 +10%', result: `목표가격이 기준가의 ${Math.round(this.homePriceMultiplier * 100)}%가 됐습니다.` }; }
             },
             {
-                id: 'goodwill-fraud', icon: '🕵️', title: '수상한 권리금 급매',
-                description: '시세보다 지나치게 싼 약국 매물이 나왔습니다. 등기와 매출자료가 어딘가 수상합니다.',
-                choices: [
-                    { title: '전문가 검증 5만원', desc: '사기를 피하고 권리금 10% 협상', disabled: this.cash < 50000, apply: () => { this.cash -= 50000; this.goodwillDiscount = Math.max(this.goodwillDiscount, .1); return '허위 매출을 찾아냈고 정상 매물의 할인 협상에 성공했습니다.'; } },
-                    { title: '계약금 12만원', desc: '30% 확률로 권리금 35% 할인', disabled: this.cash < 120000, apply: () => { this.cash -= 120000; if (Math.random() < .3) { this.goodwillDiscount = Math.max(this.goodwillDiscount, .35); return '진짜 급매였습니다! 다음 권리금 35% 할인을 확보했습니다.'; } return '권리금 사기였습니다. 계약금을 돌려받지 못했습니다.'; } },
-                    { title: '거래 거절', desc: '아무 위험도 감수하지 않습니다.', apply: () => '수상한 계약을 거절하고 자금을 지켰습니다.' }
-                ]
+                id: 'goodwill-fraud', icon: '🕵️', tone: 'bad', title: '권리금 사기',
+                description: '허위 매출자료를 믿고 계약금을 보냈다가 연락이 끊겼습니다.',
+                resolve: () => { const loss = loseCash(200000 + stageBonus); return { impact: `-${loss.toLocaleString()}원`, result: '계약금을 잃었습니다. 다음부터 매출자료를 꼭 확인해야 합니다.' }; }
             },
             {
-                id: 'jeonse-fraud', icon: '🚨', title: '전세사기 위험',
-                description: '거주 중인 집의 보증금 반환이 불안하다는 연락을 받았습니다.',
-                choices: [
-                    { title: '보증보험 8만원', desc: '손실을 확실히 막습니다.', disabled: this.cash < 80000, apply: () => { this.cash -= 80000; return '보증보험으로 보증금을 안전하게 지켰습니다.'; } },
-                    { title: '소송 진행', desc: '절반 확률로 25만원 회수, 실패 시 12만원 손실', apply: () => { if (Math.random() < .5) { this.cash += 250000; return '소송에서 승소해 25만원을 회수했습니다.'; } return `소송이 길어져 ${pay(120000).toLocaleString()}원을 지출했습니다.`; } },
-                    { title: '손실 정리', desc: '최대 18만원을 잃고 영업에 집중합니다.', apply: () => `${pay(180000).toLocaleString()}원의 보증금 손실을 정리했습니다.` }
-                ]
+                id: 'jeonse-fraud', icon: '🚨', tone: 'bad', title: '전세사기 피해',
+                description: '집주인이 보증금을 돌려주지 않아 긴급 법률비용이 발생했습니다.',
+                resolve: () => { const loss = loseCash(240000 + stageBonus); return { impact: `-${loss.toLocaleString()}원`, result: '소송과 이사 비용이 운영자금에서 빠져나갔습니다.' }; }
             },
             {
-                id: 'clinic-closure', icon: '🏥', title: '입점 의원 폐업',
-                description: '약국 매출의 기반이던 같은 건물 의원이 폐업했습니다. 새 병·의원이 입점할 때까지 처방전 손님과 수입이 감소합니다.',
-                choices: [
-                    { title: '신규 의원 유치 22만원', desc: '입점 공백과 수입 감소를 즉시 막습니다.', disabled: this.cash < 220000, apply: () => { this.cash -= 220000; this.clinicClosedUntilStage = 0; return '개원 예정 원장을 유치해 처방전 매출 기반을 지켰습니다.'; } },
-                    { title: '일반약 매출 강화', desc: '2스테이지 처방전 감소, 공격력 +2', apply: () => { this.clinicClosedUntilStage = this.stage + 1; this.baseDamage += 2; return '처방전 매출은 줄었지만 일반약 행사로 빈자리를 보완합니다.'; } },
-                    { title: '자연 입점 대기', desc: '3스테이지 동안 처방전 손님과 수입 감소', apply: () => { this.clinicClosedUntilStage = this.stage + 2; return '새 병·의원이 자연스럽게 들어올 때까지 버팁니다.'; } }
-                ]
+                id: 'clinic-closure', icon: '🏥', tone: 'bad', title: '입점 의원 폐업',
+                description: '같은 건물 의원이 폐업해 긴급 판촉과 이전 검토 비용이 들었습니다.',
+                resolve: () => { const loss = loseCash(180000 + stageBonus); return { impact: `-${loss.toLocaleString()}원`, result: '처방전 공백을 일반약 행사로 메우고 영업을 이어갑니다.' }; }
+            },
+            {
+                id: 'support-grant', icon: '🎁', tone: 'good', title: '지역약국 지원금',
+                description: '야간·공공심야약국 지원사업 대상자로 선정됐습니다.',
+                resolve: () => { const gain = 220000 + stageBonus; this.cash += gain; return { impact: `+${gain.toLocaleString()}원`, result: '지원금이 약국 운영계좌로 입금됐습니다!' }; }
+            },
+            {
+                id: 'inspection-fine', icon: '📋', tone: 'bad', title: '약무지도 점검',
+                description: '서류 미비와 진열 기준 위반으로 시정 비용이 발생했습니다.',
+                resolve: () => { const loss = loseCash(120000 + stageBonus); return { impact: `-${loss.toLocaleString()}원`, result: '과태료와 시설 보완 비용을 납부했습니다.' }; }
             }
         ];
         const candidates = events.filter(event => event.id !== this.lastEventId);
         const selected = candidates[Math.floor(Math.random() * candidates.length)];
         this.lastEventId = selected.id;
-        return { ...selected, stage: clearedStage };
+        const outcome = selected.resolve();
+        return { ...selected, ...outcome, stage: clearedStage, resolve: undefined };
     }
 
     finishShopping() {
@@ -393,7 +370,7 @@ class Game {
         ey = Math.max(0, Math.min(this.map.height, ey));
 
         const customerTypes = ["남자 진상", "여자 진상", "할아버지 진상", "할머니 진상"];
-        if (this.stage >= 2 && this.stage > this.clinicClosedUntilStage) customerTypes.push("의사");
+        if (this.stage >= 2) customerTypes.push("의사");
         let enemyType = customerTypes[Math.floor(Math.random() * customerTypes.length)];
         this.enemies.push(new Enemy(ex, ey, this, enemyType));
     }
