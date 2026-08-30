@@ -3,9 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>약사 생존기 - Phase 1</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
 
 <body>
@@ -35,6 +35,7 @@
         <div id="hp-bar"></div>
         <div id="level-bar"></div>
         <div id="skill-bar"></div>
+        <div id="event-status-bar"></div>
     </div>
     <div id="game-over"
         style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); z-index:100; color:red; font-size:48px; font-weight:bold; background:rgba(0,0,0,0.8); padding:50px; text-align:center; border: 4px solid red; border-radius: 10px;">
@@ -55,12 +56,65 @@
             <button id="quit-button" class="danger-button">게임 종료</button>
         </div>
     </div>
+    <div id="exit-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="exit-confirm-title">
+        <div id="exit-confirm-panel">
+            <div class="exit-icon">🚪</div>
+            <h1 id="exit-confirm-title">게임에서 나가겠습니까?</h1>
+            <p>현재 스테이지의 진행 상황은 저장되지 않습니다.</p>
+            <button id="exit-cancel" class="primary-button">계속 플레이</button>
+            <button id="exit-game" class="danger-button">게임 종료</button>
+        </div>
+    </div>
+    <div id="shop-modal" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+        <div id="shop-panel">
+            <div class="shop-heading">
+                <div><p class="eyebrow">STAGE CLEAR</p><h1 id="shop-title">야간 약국 상점</h1></div>
+                <div id="shop-cash">보유 현금 0원</div>
+            </div>
+            <p id="shop-summary"></p>
+            <div id="shop-container"></div>
+            <button id="shop-continue" class="primary-button">다음 근무 시작</button>
+        </div>
+    </div>
+    <div id="event-modal" role="dialog" aria-modal="true" aria-labelledby="event-title">
+        <div id="event-panel">
+            <div class="golden-key-label">GOLDEN EVENT</div>
+            <div id="event-icon">🔑</div>
+            <h1 id="event-title">경제 이벤트</h1>
+            <p id="event-description"></p>
+            <div id="event-result"></div>
+            <button id="event-continue" class="primary-button">상점으로 이동</button>
+        </div>
+    </div>
+    <div id="ending-modal" role="dialog" aria-modal="true" aria-labelledby="ending-title">
+        <div id="ending-panel">
+            <p class="eyebrow">PHARMACY SUCCESS</p>
+            <h1 id="ending-title">한강뷰 인생 엔딩</h1>
+            <div class="ending-scene one-bailey-scene" aria-label="포르쉐를 타고 한강을 지나 원베일리로 향하는 장면">
+                <div class="scene-skyline"><i></i><i></i><i></i><i></i><i></i></div>
+                <div class="scene-river"></div><div class="scene-road"></div>
+                <div class="scene-car">🏎️</div><div class="scene-home">ONE<br>BAILEY</div>
+            </div>
+            <p>포르쉐를 타고 반포 래미안 원베일리 한강뷰 집으로 퇴근합니다.</p>
+            <strong id="ending-score"></strong>
+            <button id="ending-restart" class="primary-button">새 인생 시작</button>
+        </div>
+    </div>
+    <div id="purchase-animation" aria-live="polite">
+        <div class="milestone-scene"><div class="speed-line"></div><div class="milestone-car">🏎️</div></div>
+        <h2>포르쉐 출고 완료!</h2><p>다음 목표는 반포 원베일리 한강뷰입니다.</p>
+    </div>
     <div id="staff-dialog" aria-live="polite">
         <div id="staff-portrait">💊</div>
         <div id="staff-dialog-body">
             <div id="staff-dialog-name">근무약사</div>
             <div id="staff-dialog-text"></div>
         </div>
+    </div>
+    <div id="mobile-controls" aria-label="모바일 게임 조작">
+        <div id="touch-stick" aria-label="이동 조이스틱"><div id="touch-knob"></div></div>
+        <button id="touch-pause" type="button" aria-label="일시정지">Ⅱ</button>
+        <button id="touch-skill" type="button"><strong>Q</strong><span>시럽투척</span></button>
     </div>
     <canvas id="gameCanvas"></canvas>
 
@@ -71,8 +125,8 @@
     <script src="src/Audio.js?v=2"></script>
     <script src="src/Player.js"></script>
     <script src="src/Enemy.js"></script>
-    <script src="src/Game.js"></script>
-    <script src="main.js?v=2"></script>
+    <script src="src/Game.js?v=6"></script>
+    <script src="main.js?v=6"></script>
 </body>
 
 </html>

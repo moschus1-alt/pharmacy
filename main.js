@@ -7,11 +7,20 @@ window.onload = () => {
     let selectedProfile = profiles.minjun;
 
     function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        const viewport = window.visualViewport;
+        const width = Math.round(viewport?.width || window.innerWidth);
+        const height = Math.round(viewport?.height || window.innerHeight);
+        canvas.width = width;
+        canvas.height = height;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
     }
 
+    const isMobileLayout = () => window.innerWidth <= 820 || window.matchMedia('(pointer: coarse)').matches;
+
     window.addEventListener('resize', resize);
+    window.visualViewport?.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', () => setTimeout(resize, 150));
     resize();
 
     let game = null;
@@ -22,12 +31,18 @@ window.onload = () => {
     const staffDialogText = document.getElementById('staff-dialog-text');
     let staffDialogTimer;
     const soundToggle = document.getElementById('sound-toggle');
+    const refreshSoundLabel = () => {
+        const muted = !!window.gameAudio.muted;
+        soundToggle.textContent = isMobileLayout() ? (muted ? '🔇' : '🔊') : (muted ? '🔇 음향 꺼짐' : '🔊 음향 켜짐');
+        soundToggle.setAttribute('aria-label', muted ? '음향 켜기' : '음향 끄기');
+    };
     soundToggle.addEventListener('click', async () => {
         const muted = await window.gameAudio.toggleMute();
         soundToggle.dataset.audioState = window.gameAudio.ctx?.state || 'unavailable';
         soundToggle.setAttribute('aria-pressed', String(muted));
-        soundToggle.textContent = muted ? '🔇 음향 꺼짐' : '🔊 음향 켜짐';
+        refreshSoundLabel();
     });
+    refreshSoundLabel();
 
     window.showStaffDialog = (text) => {
         clearTimeout(staffDialogTimer);
@@ -39,19 +54,50 @@ window.onload = () => {
     const pauseModal = document.getElementById('pause-modal');
     const resumeButton = document.getElementById('resume-button');
     const quitButton = document.getElementById('quit-button');
+    const shopModal = document.getElementById('shop-modal');
+    const shopContainer = document.getElementById('shop-container');
+    const shopCash = document.getElementById('shop-cash');
+    const shopSummary = document.getElementById('shop-summary');
+    const shopContinue = document.getElementById('shop-continue');
+    const endingModal = document.getElementById('ending-modal');
+    const purchaseAnimation = document.getElementById('purchase-animation');
+    const eventModal = document.getElementById('event-modal');
+    const eventIcon = document.getElementById('event-icon');
+    const eventTitle = document.getElementById('event-title');
+    const eventDescription = document.getElementById('event-description');
+    const eventResult = document.getElementById('event-result');
+    const eventContinue = document.getElementById('event-continue');
+    const exitConfirmModal = document.getElementById('exit-confirm-modal');
+    const exitCancel = document.getElementById('exit-cancel');
+    const exitGame = document.getElementById('exit-game');
+    const touchPause = document.getElementById('touch-pause');
+    let purchaseAnimationTimer;
+    let eventStage = 0;
     let pauseMenuOpen = false;
     let gameOverSoundPlayed = false;
+    let backGuardActive = false;
+    let pausedBeforeExit = false;
+
+    const isBlockingModalOpen = () => (
+        shopModal.style.display === 'block' ||
+        eventModal.style.display === 'grid' ||
+        endingModal.style.display === 'grid' ||
+        purchaseAnimation.classList.contains('active') ||
+        document.getElementById('upgrade-modal').style.display === 'block'
+    );
 
     const setPauseMenu = (open) => {
         if (!game) return;
+        if (open && isBlockingModalOpen()) return;
         pauseMenuOpen = open;
         game.isPaused = open;
         window.gameAudio.setPaused(open);
         pauseModal.style.display = open ? 'block' : 'none';
+        touchPause.textContent = open ? '▶' : 'Ⅱ';
     };
 
     window.addEventListener('keydown', (event) => {
-        if (!game || event.key !== 'Escape' || game.isGameOver || upgradeModal.style.display === 'block') return;
+        if (!game || event.key !== 'Escape' || game.isGameOver || isBlockingModalOpen()) return;
         event.preventDefault();
         setPauseMenu(!pauseMenuOpen);
     });
@@ -62,16 +108,142 @@ window.onload = () => {
         pauseModal.style.display = 'none';
     };
 
+    const showExitConfirmation = () => {
+        if (!game || game.isGameOver || game.won) return;
+        pausedBeforeExit = game.isPaused;
+        game.isPaused = true;
+        window.gameAudio.setPaused(true);
+        exitConfirmModal.style.display = 'grid';
+    };
+
+    exitCancel.onclick = () => {
+        exitConfirmModal.style.display = 'none';
+        game.isPaused = pausedBeforeExit;
+        window.gameAudio.setPaused(pausedBeforeExit);
+    };
+    exitGame.onclick = () => {
+        backGuardActive = false;
+        location.reload();
+    };
+
+    window.addEventListener('popstate', () => {
+        if (!backGuardActive || !game || game.isGameOver || game.won) return;
+        history.pushState({ pharmacyGame: true }, '', location.href);
+        showExitConfirmation();
+    });
+
+    const renderShop = (notice = '') => {
+        if (!game) return;
+        shopCash.textContent = `현금 ${game.cash.toLocaleString()}원`;
+        if (notice) shopSummary.textContent = notice;
+        shopContainer.innerHTML = '';
+        const categories = [...new Set(game.getShopItems().map(item => item.category))];
+        categories.forEach(category => {
+            const section = document.createElement('section');
+            section.className = 'shop-category';
+            section.innerHTML = `<h2>${category}</h2>`;
+            const grid = document.createElement('div');
+            grid.className = 'shop-grid';
+            game.getShopItems().filter(item => item.category === category).forEach(item => {
+                const button = document.createElement('button');
+                button.className = 'shop-item';
+                button.disabled = item.soldOut || item.locked;
+                button.innerHTML = `<strong>${item.name}</strong><span>${item.desc}</span><b>${item.soldOut ? '구매 완료' : item.locked ? item.lockText : `${item.price.toLocaleString()}원`}</b>`;
+                button.onclick = () => {
+                    const result = game.purchaseShopItem(item.id);
+                    renderShop(result.message);
+                };
+                grid.appendChild(button);
+            });
+            section.appendChild(grid);
+            shopContainer.appendChild(section);
+        });
+    };
+
+    window.openStageShop = (activeGame, clearedStage) => {
+        if (activeGame !== game) return;
+        shopSummary.textContent = `STAGE ${clearedStage} 정산 완료 · 체력을 회복하거나 약국을 키워 다음 근무를 준비하세요.`;
+        shopModal.style.display = 'block';
+        renderShop();
+    };
+
+    window.openStageEvent = (activeGame, clearedStage, event) => {
+        if (activeGame !== game) return;
+        eventStage = clearedStage;
+        eventIcon.textContent = event.icon;
+        eventTitle.textContent = event.title;
+        eventDescription.textContent = event.description;
+        eventResult.innerHTML = `<strong>${event.impact}</strong><span>${event.result}</span>`;
+        eventResult.style.display = 'grid';
+        eventContinue.style.display = 'none';
+        eventModal.dataset.tone = event.tone || 'neutral';
+        eventModal.style.display = 'grid';
+        eventModal.classList.remove('event-enter');
+        void eventModal.offsetWidth;
+        eventModal.classList.add('event-enter');
+        window.gameAudio.pickup(event.tone === 'good' ? 'upgrade' : 'potion');
+        window.setTimeout(() => {
+            if (eventModal.style.display === 'grid') eventContinue.style.display = 'block';
+        }, 900);
+    };
+
+    eventContinue.onclick = () => {
+        eventModal.style.display = 'none';
+        eventModal.classList.remove('event-enter');
+        window.openStageShop(game, eventStage);
+    };
+
+    shopContinue.onclick = () => {
+        if (!game) return;
+        shopModal.style.display = 'none';
+        game.finishShopping();
+        window.showStaffDialog(`${game.getPharmacyTier().name} · 다음 야간 근무를 시작합니다!`);
+    };
+
+    window.showGameEnding = (activeGame) => {
+        shopModal.style.display = 'none';
+        endingModal.style.setProperty('display', 'grid', 'important');
+        endingModal.style.visibility = 'visible';
+        endingModal.style.opacity = '1';
+        document.getElementById('ending-score').textContent = `최종 기록 · STAGE ${activeGame.stage} · ${activeGame.getPharmacyTier().name}`;
+    };
+    window.showPurchaseAnimation = (type) => {
+        if (type !== 'porsche') return;
+        clearTimeout(purchaseAnimationTimer);
+        purchaseAnimation.classList.remove('active');
+        void purchaseAnimation.offsetWidth;
+        purchaseAnimation.style.setProperty('display', 'grid', 'important');
+        purchaseAnimation.style.visibility = 'visible';
+        purchaseAnimation.style.opacity = '1';
+        purchaseAnimation.classList.add('active');
+        purchaseAnimationTimer = setTimeout(() => {
+            purchaseAnimation.classList.remove('active');
+            purchaseAnimation.style.setProperty('display', 'none', 'important');
+        }, 2800);
+    };
+    document.getElementById('ending-restart').onclick = () => location.reload();
+
+    const touchSkill = document.getElementById('touch-skill');
+    touchSkill.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        if (game) game.fireEmergencyPrescription();
+    });
+    touchPause.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        if (!game || game.isGameOver || isBlockingModalOpen()) return;
+        setPauseMenu(!pauseMenuOpen);
+    });
+
     // 업그레이드 UI 관련
     const upgradeModal = document.getElementById('upgrade-modal');
     const upgradeContainer = document.getElementById('upgrade-container');
 
     const UPGRADES = [
-        { title: "영양제 투여", desc: "최대 체력 20 증가 및 완전 회복", apply: (player, game) => { player.maxHp += 20; player.hp = player.maxHp; } },
-        { title: "드링크제 각성", desc: "이동 속도 15 증가", apply: (player, game) => { player.speed += 15; } },
-        { title: "약사의 손놀림", desc: "알약 투척 속도 증가", apply: (player, game) => { player.fireRate = Math.max(0.02, player.fireRate * 0.85); } },
-        { title: "처방전 강화", desc: "알약 데미지 5 증가", apply: (player, game) => { game.baseDamage += 5; } },
-        { title: "대용량 포장", desc: "알약 크기(판정) 증가", apply: (player, game) => { game.baseProjRadius += 3; } }
+        { title: "영양제 투여", desc: "최대 체력 10 증가 및 HP 35 회복", apply: (player) => { player.maxHp += 10; player.hp = Math.min(player.maxHp, player.hp + 35); } },
+        { title: "드링크제 각성", desc: "이동 속도 8 증가", apply: (player) => { player.speed += 8; } },
+        { title: "약사의 손놀림", desc: "알약 투척 간격 8% 감소", apply: (player) => { player.fireRate = Math.max(0.18, player.fireRate * 0.92); } },
+        { title: "처방전 강화", desc: "알약 데미지 2 증가", apply: (player, game) => { game.baseDamage += 2; } },
+        { title: "대용량 포장", desc: "알약 크기(판정) 1 증가", apply: (player, game) => { game.baseProjRadius += 1; } }
     ];
 
     window.onLevelUp = () => {
@@ -91,7 +263,7 @@ window.onload = () => {
                 game.isPaused = false;
 
                 // 만약 경험치가 남아있다면 연속 레벨업
-                if (game.exp >= game.level * 100) {
+                if (game.exp >= game.expToNextLevel()) {
                     game.addExp(0);
                 }
             };
@@ -121,14 +293,23 @@ window.onload = () => {
         game.draw();
 
         // UI 업데이트
-        document.getElementById('character-bar').innerText = `${selectedProfile.name} · ${selectedProfile.role}`;
+        const tier = game.getPharmacyTier();
+        const mobile = isMobileLayout();
+        document.getElementById('character-bar').innerText = mobile
+            ? `${selectedProfile.name} · ${tier.name}\n💰${game.cash.toLocaleString()} · 직원 ${game.employeeCount}/${tier.employeeLimit} · 약사 ${game.pharmacistCount}/${tier.pharmacistLimit}`
+            : `${selectedProfile.name} · ${tier.name} · ${game.cash.toLocaleString()}원 · 직원 ${game.employeeCount}/${tier.employeeLimit} · 약사 ${game.pharmacistCount}/${tier.pharmacistLimit}`;
         hpUi.innerText = `HP  ${Math.ceil(Math.max(0, game.player.hp))} / ${game.player.maxHp}`;
-        levelUi.innerText = game.bossActive
-            ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}`
-            : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.level * 100})`;
-        skillUi.innerText = game.novaCooldown > 0
-            ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초`
-            : `시럽투척: 사용 가능 (Q)`;
+        levelUi.innerText = mobile
+            ? (game.bossActive ? `STAGE ${game.stage} · 보스전 · Lv ${game.level}` : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} · Lv ${game.level} · EXP ${game.exp}/${game.expToNextLevel()}`)
+            : (game.bossActive ? `STAGE ${game.stage} · 중간보스 교전 중 | Lv: ${game.level}` : `STAGE ${game.stage} · ${game.stageKills}/${game.stageTarget} 처치 | Lv: ${game.level} (Exp: ${game.exp} / ${game.expToNextLevel()})`);
+        skillUi.innerText = mobile
+            ? (game.novaCooldown > 0 ? `Q 시럽투척 ${game.novaCooldown.toFixed(1)}초` : 'Q 시럽투척 준비 완료')
+            : (game.novaCooldown > 0 ? `시럽투척 충전 중  ${game.novaCooldown.toFixed(1)}초` : `시럽투척: 사용 가능 (Q)`);
+        document.getElementById('event-status-bar').innerText = mobile
+            ? `다음 이벤트 ${game.nextEventStage} · 집값 ×${game.homePriceMultiplier.toFixed(2)}`
+            : `다음 황금 이벤트 STAGE ${game.nextEventStage} · 원베일리 시세 ×${game.homePriceMultiplier.toFixed(2)}`;
+        touchSkill.classList.toggle('ready', game.novaCooldown <= 0);
+        touchSkill.querySelector('span').textContent = game.novaCooldown > 0 ? `${game.novaCooldown.toFixed(1)}초` : '시럽투척';
 
         requestAnimationFrame(gameLoop);
     }
@@ -148,6 +329,10 @@ window.onload = () => {
         window.gameAudio.setPaused(false);
         gameOverSoundPlayed = false;
         game = new Game(canvas, selectedProfile);
+        if (!backGuardActive) {
+            history.pushState({ pharmacyGame: true }, '', location.href);
+            backGuardActive = true;
+        }
         document.getElementById('start-screen').style.display = 'none';
         window.showStaffDialog(`${selectedProfile.name} 약사님, 야간 근무를 시작합니다. 시럽투척이 충전되면 Q로 사용하세요!`);
         requestAnimationFrame(gameLoop);

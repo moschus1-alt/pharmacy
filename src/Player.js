@@ -33,19 +33,9 @@ class Player {
         }
         this.shieldTimer = Math.max(0, this.shieldTimer - dt);
 
-        let dx = 0;
-        let dy = 0;
-
-        if (input.isKeyPressed('w') || input.isKeyPressed('arrowup')) dy -= 1;
-        if (input.isKeyPressed('s') || input.isKeyPressed('arrowdown')) dy += 1;
-        if (input.isKeyPressed('a') || input.isKeyPressed('arrowleft')) dx -= 1;
-        if (input.isKeyPressed('d') || input.isKeyPressed('arrowright')) dx += 1;
-
-        if (dx !== 0 && dy !== 0) {
-            const length = Math.hypot(dx, dy);
-            dx /= length;
-            dy /= length;
-        }
+        const movement = input.getMovement();
+        let dx = movement.x;
+        let dy = movement.y;
 
         this.x += dx * this.speed * dt;
         this.y += dy * this.speed * dt;
@@ -74,11 +64,16 @@ class Player {
             this.fireCooldown -= dt;
         }
         this.autoCooldown -= dt;
-        if (this.autoFireBonus > 0 && this.autoCooldown <= 0) {
+        const machinePower = this.game.machinePower || 0;
+        if ((this.autoFireBonus > 0 || machinePower > 0) && this.autoCooldown <= 0) {
             const target = this.game.enemies.find(enemy => Utils.distance(this.x, this.y, enemy.x, enemy.y) < 280);
             if (target) {
-                this.game.spawnProjectile(this.x, this.y, target.x, target.y);
-                this.autoCooldown = Math.max(0.3, 1 / this.autoFireBonus);
+                const shots = Math.min(4, 1 + Math.floor(machinePower / 5));
+                for (let i = 0; i < shots; i++) {
+                    const spread = (i - (shots - 1) / 2) * 18;
+                    this.game.spawnProjectile(this.x, this.y, target.x + spread, target.y - spread);
+                }
+                this.autoCooldown = Math.max(0.18, 1.15 - machinePower * 0.065 - this.autoFireBonus * 0.12);
             }
         }
 
