@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>약사 생존기 - Phase 1</title>
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 
 <body>
@@ -56,6 +56,15 @@
             <button id="quit-button" class="danger-button">게임 종료</button>
         </div>
     </div>
+    <div id="exit-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="exit-confirm-title">
+        <div id="exit-confirm-panel">
+            <div class="exit-icon">🚪</div>
+            <h1 id="exit-confirm-title">게임에서 나가겠습니까?</h1>
+            <p>현재 스테이지의 진행 상황은 저장되지 않습니다.</p>
+            <button id="exit-cancel" class="primary-button">계속 플레이</button>
+            <button id="exit-game" class="danger-button">게임 종료</button>
+        </div>
+    </div>
     <div id="shop-modal" role="dialog" aria-modal="true" aria-labelledby="shop-title">
         <div id="shop-panel">
             <div class="shop-heading">
@@ -104,6 +113,7 @@
     </div>
     <div id="mobile-controls" aria-label="모바일 게임 조작">
         <div id="touch-stick" aria-label="이동 조이스틱"><div id="touch-knob"></div></div>
+        <button id="touch-pause" type="button" aria-label="일시정지">Ⅱ</button>
         <button id="touch-skill" type="button"><strong>Q</strong><span>시럽투척</span></button>
     </div>
     <canvas id="gameCanvas"></canvas>
@@ -116,7 +126,7 @@
     <script src="src/Player.js"></script>
     <script src="src/Enemy.js"></script>
     <script src="src/Game.js?v=3"></script>
-    <script src="main.js?v=3"></script>
+    <script src="main.js?v=4"></script>
 </body>
 
 </html>
